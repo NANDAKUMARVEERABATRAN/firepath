@@ -505,3 +505,11 @@
 .share-card .share-preview{margin-top:12px}
 .share-card .share-chips{margin:12px 0 0}
 .share-save{display:inline-flex;gap:4px;align-items:center;background:none;border:0;padding:0;cursor:pointer;font:inherit;font-weight:700;color:var(--green)}
+
+/* Check-in: retirement savings deducted from salary */
+.salary-savings{display:flex;flex-direction:column;gap:14px}
+.salary-savings label{display:flex;flex-direction:column;gap:6px}
+.salary-savings label>span{font-size:13px;font-weight:700;color:var(--navy)}
+.qn-skip-chip{align-self:flex-start;border:1px solid #dce5e8;background:#fff;border-radius:20px;padding:7px 14px;font:inherit;font-size:13px;cursor:pointer;color:#41515f}
+.qn-skip-chip:hover{border-color:var(--green);color:var(--green-dark)}
+.qn-rate-line{font-size:14px;color:#41515f;margin:10px 0}.qn-rate-line b{color:var(--green-dark)}

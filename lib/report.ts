@@ -26,7 +26,8 @@ export function buildMonthlyReport(input: { snapshots: Snapshot[]; checkins: Che
   const diff = (key: "fire_progress" | "fire_portfolio" | "net_worth" | "fire_score") => (latest && previous ? latest[key] - previous[key] : null);
 
   const sortedCheckins = [...input.checkins].sort((a, b) => b.month_start.localeCompare(a.month_start));
-  const rate = (row: CheckinRow) => (row.income > 0 ? ((row.income - row.expenses) / row.income) * 100 : 0);
+  const earned = (row: CheckinRow) => row.income + (row.salary_savings ?? 0); // take-home + EPF/NPS from salary
+  const rate = (row: CheckinRow) => (earned(row) > 0 ? ((earned(row) - row.expenses) / earned(row)) * 100 : 0);
   const last = sortedCheckins[0] ?? null;
   const before = sortedCheckins[1] ?? null;
   const lessonsThisMonth = input.lessons.filter(lesson => lesson.completed_at.slice(0, 7) === thisMonth.slice(0, 7)).length;
@@ -43,7 +44,7 @@ export function buildMonthlyReport(input: { snapshots: Snapshot[]; checkins: Che
   return {
     monthLabel: today.toLocaleDateString("en-IN", { month: "long", year: "numeric" }),
     progressChange, portfolioChange: diff("fire_portfolio"), netWorthChange: diff("net_worth"), scoreChange: diff("fire_score"),
-    checkin: last ? { income: last.income, expenses: last.expenses, invested: last.invested, savingsRate: rate(last), investRate: last.income > 0 ? (last.invested / last.income) * 100 : 0 } : null,
+    checkin: last ? { income: last.income, expenses: last.expenses, invested: last.invested, savingsRate: rate(last), investRate: earned(last) > 0 ? ((last.invested + (last.salary_savings ?? 0)) / earned(last)) * 100 : 0 } : null,
     previousCheckin: before ? { savingsRate: rate(before), invested: before.invested } : null,
     lessonsThisMonth,
     loggedThisMonth: sortedCheckins.some(row => row.month_start === thisMonth),

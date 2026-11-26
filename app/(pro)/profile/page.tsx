@@ -25,6 +25,8 @@ type Profile = {
   liabilities: string;
   emergency_fund: string;
   monthly_investment: string;
+  monthly_salary_pf: string;
+  monthly_salary_pension: string;
   has_health_insurance: boolean;
   has_term_insurance: boolean;
   has_dependents: boolean;
@@ -35,10 +37,10 @@ type Profile = {
   fire_why_note: string;
   dream_age: string;
 };
-type MoneyKey = "monthly_income" | "monthly_investment_income" | "monthly_expenses" | "other_assets" | "fire_accessible_assets" | "later_retirement_assets" | "liabilities" | "emergency_fund" | "monthly_investment" | "health_cover_amount" | "term_cover_amount";
+type MoneyKey = "monthly_income" | "monthly_salary_pf" | "monthly_salary_pension" | "monthly_investment_income" | "monthly_expenses" | "other_assets" | "fire_accessible_assets" | "later_retirement_assets" | "liabilities" | "emergency_fund" | "monthly_investment" | "health_cover_amount" | "term_cover_amount";
 type BoolKey = "has_health_insurance" | "has_term_insurance" | "has_dependents";
 
-const emptyProfile: Profile = { age: "", monthly_income: "", monthly_investment_income: "", monthly_expenses: "", other_assets: "", fire_accessible_assets: "", later_retirement_assets: "", liabilities: "", emergency_fund: "", monthly_investment: "", has_health_insurance: false, has_term_insurance: false, has_dependents: false, health_cover_amount: "", term_cover_amount: "", currency: "INR", fire_reasons: [], fire_why_note: "", dream_age: "" };
+const emptyProfile: Profile = { age: "", monthly_income: "", monthly_investment_income: "", monthly_expenses: "", other_assets: "", fire_accessible_assets: "", later_retirement_assets: "", liabilities: "", emergency_fund: "", monthly_investment: "", monthly_salary_pf: "0", monthly_salary_pension: "0", has_health_insurance: false, has_term_insurance: false, has_dependents: false, health_cover_amount: "", term_cover_amount: "", currency: "INR", fire_reasons: [], fire_why_note: "", dream_age: "" };
 
 const num = (value: string) => Math.max(0, Number(value || 0));
 
@@ -68,6 +70,9 @@ function localize<Q extends { id: string; title: string; subtitle: string }>(q: 
   if (CUR !== "AE") return q;
   const uae: Record<string, Partial<{ title: string; subtitle: string; chips: { label: string; value: number }[] }>> = {
     income: { subtitle: "Salary plus allowances (housing, transport) and any other regular income." },
+    "salary-pf": { title: "Does your employer put workplace savings aside for you?", subtitle: "e.g. DEWS or a company savings plan, taken from or added to your salary each month. Skip if none." },
+    "salary-pension": { title: "And a pension contribution from your salary?", subtitle: "e.g. GPSSA for UAE nationals. Skip if none." },
+    sip: { subtitle: "Stocks, funds and savings plans you invest in yourself each month." },
     expenses: { subtitle: "Rent, school fees, bills, money sent home, fun — everything except investing." },
     later: { title: "How much is your end-of-service gratuity, workplace savings or pension?", subtitle: "Money you get when you leave your job or retire. Check your HR portal or DEWS statement." },
     "health-cover": { chips: [{ label: "AED 150k", value: 150000 }, { label: "AED 500k", value: 500000 }, { label: "AED 1M", value: 1000000 }, { label: "AED 5M", value: 5000000 }] },
@@ -91,12 +96,15 @@ const questions: (Question & { show?: (p: Profile) => boolean; feedback?: (p: Pr
   { id: "dependents", section: "About you", emoji: "👨‍👩‍👧", title: "Does anyone depend on your income?", subtitle: "Spouse, children, or parents who would struggle without your earnings.", kind: "yesno", key: "has_dependents", yes: "Yes, my family does", no: "No, just me" },
 
   { id: "income", section: "Money flow", emoji: "💰", title: "How much lands in your bank account each month?", subtitle: "Take-home pay after tax, plus any regular income like rent or interest.", kind: "money", key: "monthly_income" },
+  { id: "salary-pf", section: "Money flow", emoji: "🏛️", title: "Does EPF or VPF come out of your salary?", subtitle: "Your share + your employer’s share each month (see your payslip). It never reaches your bank, so it isn’t in the amount above.", kind: "money", key: "monthly_salary_pf", optional: true, chips: [{ label: "None", value: 0 }],
+    feedback: p => num(p.monthly_salary_pf) > 0 ? `🏛️ ${cash(num(p.monthly_salary_pf))} a month saved automatically. It counts toward your savings rate.` : null },
+  { id: "salary-pension", section: "Money flow", emoji: "👴", title: "And NPS from your salary?", subtitle: "Your share + your employer’s share deducted on your payslip. Skip if you pay NPS yourself (that goes under investing).", kind: "money", key: "monthly_salary_pension", optional: true, chips: [{ label: "None", value: 0 }] },
   { id: "inv-income", section: "Money flow", emoji: "🌱", title: "Does any of that come from your investments?", subtitle: "Dividends, interest or rent that’s already included in the amount above.", kind: "money", key: "monthly_investment_income", optional: true, chips: [{ label: "None", value: 0 }],
     feedback: p => num(p.monthly_investment_income) > 0 ? `Your money is already earning ${cash(num(p.monthly_investment_income))} a month for you. That’s the FIRE engine starting! 🚀` : null,
     error: p => num(p.monthly_investment_income) > num(p.monthly_income) ? "This is part of your income above, so it can’t be bigger than it." : null },
   { id: "expenses", section: "Money flow", emoji: "🛒", title: "What do you spend in a normal month?", subtitle: "Rent, EMIs, groceries, bills, shopping, fun — everything except investing.", kind: "money", key: "monthly_expenses",
-    feedback: p => { const income = num(p.monthly_income); if (!income || !p.monthly_expenses) return null; const rate = (income - num(p.monthly_expenses)) / income * 100; return rate >= 30 ? `🔥 You keep ${rate.toFixed(0)}% of your income. That’s FIRE-level saving!` : rate >= 15 ? `👍 You keep ${rate.toFixed(0)}% of your income. Getting to 30% speeds up FIRE a lot.` : rate > 0 ? `You keep ${rate.toFixed(0)}% of your income. Small changes add up — we’ll help you find them.` : "Spending is at or above income right now. The Budget page can help you find room — no judgement."; } },
-  { id: "sip", section: "Money flow", emoji: "📈", title: "How much do you invest every month?", subtitle: "SIPs, stocks, RDs, NPS or PPF contributions — the total you put away.", kind: "money", key: "monthly_investment", optional: true, chips: [{ label: "Not yet", value: 0 }],
+    feedback: p => { const income = num(p.monthly_income) + num(p.monthly_salary_pf) + num(p.monthly_salary_pension); if (!income || !p.monthly_expenses) return null; const rate = (income - num(p.monthly_expenses)) / income * 100; return rate >= 30 ? `🔥 You keep ${rate.toFixed(0)}% of your income. That’s FIRE-level saving!` : rate >= 15 ? `👍 You keep ${rate.toFixed(0)}% of your income. Getting to 30% speeds up FIRE a lot.` : rate > 0 ? `You keep ${rate.toFixed(0)}% of your income. Small changes add up — we’ll help you find them.` : "Spending is at or above income right now. The Budget page can help you find room — no judgement."; } },
+  { id: "sip", section: "Money flow", emoji: "📈", title: "How much do you invest every month?", subtitle: "SIPs, stocks, RDs, PPF, extra NPS: money you invest from your bank. Not EPF/NPS deducted from salary (already counted).", kind: "money", key: "monthly_investment", optional: true, chips: [{ label: "Not yet", value: 0 }],
     feedback: p => { const income = num(p.monthly_income); const sip = num(p.monthly_investment); if (!income || !p.monthly_investment) return null; const pct = sip / income * 100; return pct >= 20 ? `💪 ${pct.toFixed(0)}% of your income — you’re paying yourself first!` : sip > 0 ? `${pct.toFixed(0)}% of your income. Growing this toward 20% is the fastest FIRE lever.` : `No problem — even ${CUR === "IN" ? "a ₹500 SIP" : "AED 100 a month"} starts the habit. We’ll show you what it does.`; } },
 
   { id: "emergency", section: "What you own", emoji: "🛟", title: "How much cash is set aside for emergencies?", subtitle: "Savings account or liquid fund money you don’t touch unless something goes wrong.", kind: "money", key: "emergency_fund", optional: true, chips: [{ label: "None yet", value: 0 }],
@@ -126,6 +134,7 @@ export default function ProfilePage() {
   const [message, setMessage] = useState("");
   const [step, setStep] = useState(0); // index into visible questions; === visible.length means review
   const [returning, setReturning] = useState(false);
+  const [salaryColumns, setSalaryColumns] = useState(false); // migration 0026 applied?
   const [runSection, setRunSection] = useState<string | null>(null);
   const [celebrate, setCelebrate] = useState<{ title: string; detail: string } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -160,12 +169,14 @@ export default function ProfilePage() {
         if (error) setMessage("Could not load your profile. Details: " + error.message);
         else if (!data) setProfile(current => ({ ...current, currency: getCountry(readStoredCountry() ?? detectCountry()).currency })); // new profile: start in the visitor's country
         else if (data) {
+          setSalaryColumns("monthly_salary_pf" in data);
           const assets = Number(data.assets ?? 0), emergency = Number(data.emergency_fund ?? 0), fire = Number(data.fire_accessible_assets ?? 0), later = Number(data.later_retirement_assets ?? 0);
           setProfile({
             age: data.age?.toString() ?? "", monthly_income: data.monthly_income?.toString() ?? "", monthly_investment_income: data.monthly_investment_income?.toString() ?? "0",
             monthly_expenses: data.monthly_expenses?.toString() ?? "", other_assets: String(Math.max(0, assets - emergency - fire - later)),
             fire_accessible_assets: data.fire_accessible_assets?.toString() ?? "", later_retirement_assets: data.later_retirement_assets?.toString() ?? "",
             liabilities: data.liabilities?.toString() ?? "", emergency_fund: data.emergency_fund?.toString() ?? "", monthly_investment: data.monthly_investment?.toString() ?? "",
+            monthly_salary_pf: data.monthly_salary_pf?.toString() ?? "0", monthly_salary_pension: data.monthly_salary_pension?.toString() ?? "0",
             has_health_insurance: data.has_health_insurance ?? false, has_term_insurance: data.has_term_insurance ?? false, has_dependents: data.has_dependents ?? false,
             health_cover_amount: data.health_cover_amount?.toString() ?? "", term_cover_amount: data.term_cover_amount?.toString() ?? "", currency: data.currency,
             fire_reasons: Array.isArray(data.fire_reasons) ? data.fire_reasons : [], fire_why_note: data.fire_why_note ?? "", dream_age: data.dream_age?.toString() ?? "",
@@ -219,6 +230,7 @@ export default function ProfilePage() {
       monthly_income: num(profile.monthly_income), monthly_investment_income: num(profile.monthly_investment_income), monthly_expenses: num(profile.monthly_expenses),
       assets: emergency + fire + later + num(profile.other_assets), fire_accessible_assets: fire, later_retirement_assets: later,
       liabilities: num(profile.liabilities), emergency_fund: emergency, monthly_investment: num(profile.monthly_investment),
+      ...(salaryColumns || num(profile.monthly_salary_pf) + num(profile.monthly_salary_pension) > 0 ? { monthly_salary_pf: num(profile.monthly_salary_pf), monthly_salary_pension: num(profile.monthly_salary_pension) } : {}),
       has_health_insurance: profile.has_health_insurance, has_term_insurance: profile.has_dependents && profile.has_term_insurance, has_dependents: profile.has_dependents,
       health_cover_amount: profile.has_health_insurance ? num(profile.health_cover_amount) : 0, term_cover_amount: profile.has_dependents && profile.has_term_insurance ? num(profile.term_cover_amount) : 0,
       currency: profile.currency, updated_at: new Date().toISOString(),
@@ -246,7 +258,7 @@ export default function ProfilePage() {
     setMessage(`${Object.keys(updates).length} answer${Object.keys(updates).length === 1 ? "" : "s"} filled from your voice note. Check them below, then save.`);
   }
 
-  const income = num(profile.monthly_income), expenses = num(profile.monthly_expenses);
+  const income = num(profile.monthly_income) + num(profile.monthly_salary_pf) + num(profile.monthly_salary_pension), expenses = num(profile.monthly_expenses);
   const summary = {
     savingsRate: income ? Math.round((income - expenses) / income * 100) : 0,
     emergencyMonths: expenses ? num(profile.emergency_fund) / expenses : 0,

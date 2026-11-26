@@ -8,6 +8,7 @@ import Footer from "@/components/layout/Footer";
 import Celebration from "@/components/game/Celebration";
 import { createClient } from "@/lib/supabase/client";
 import { loadFinancialState, type CutPlan, type FinancialState } from "@/lib/financialState";
+import { totalIncome } from "@/lib/fireScore";
 import { countryFromCurrency, formatCountryMoney } from "@/lib/country";
 import { cutImpact, cutNeededForRate, findOverspending, getLeaks, getNextTier, getSavingsTier, idleMoney, savingsRate, savingsRateTable, SAVINGS_TIERS } from "@/lib/savingsCoach";
 
@@ -62,14 +63,17 @@ export default function SaveMorePage() {
     const flow = state?.scoreProfile;
     const base = state?.profile;
     if (!flow || !base || !state) return null;
-    const income = flow.monthly_income + (flow.monthly_investment_income ?? 0);
+    // Take-home already includes investment payouts; EPF/NPS deducted from salary are added on top.
+    const income = totalIncome(flow);
+    const fromSalary = Math.max(0, flow.monthly_salary_savings ?? 0);
     const expenses = flow.monthly_expenses;
-    const invested = flow.monthly_investment;
+    const invested = flow.monthly_investment; // invested from the bank (FIRE-accessible)
     const rate = savingsRate(income, expenses);
     const realReturn = state.plan.expected_return - state.plan.inflation_rate;
     const withdrawal = state.plan.withdrawal_rate;
     const accessible = Math.max(0, base.investableAssets ?? base.assets);
-    return { income, expenses, invested, rate, realReturn, withdrawal, accessible, idle: idleMoney(income, expenses, invested) };
+    // Idle money is measured in the bank: take-home minus spending minus bank investments.
+    return { income, fromSalary, expenses, invested, rate, realReturn, withdrawal, accessible, idle: idleMoney(flow.monthly_income, expenses, invested) };
   }, [state]);
 
   const pickedTotal = Object.values(picked).reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
@@ -154,7 +158,7 @@ export default function SaveMorePage() {
           <div>
             <p className="eyebrow">YOUR SAVER LEVEL</p>
             <h2>{tier.name}</h2>
-            <p className="saver-rate"><b>{numbers.rate!.toFixed(0)}%</b> of your income stays with you{numbers.income > 0 ? ` · ${Math.round((numbers.invested / numbers.income) * 100)}% gets invested` : ""}</p>
+            <p className="saver-rate"><b>{numbers.rate!.toFixed(0)}%</b> of your income stays with you{numbers.income > 0 ? ` · ${Math.round(((numbers.invested + numbers.fromSalary) / numbers.income) * 100)}% gets invested${numbers.fromSalary > 0 ? " (incl. salary EPF/NPS)" : ""}` : ""}</p>
           </div>
         </div>
         <div className="saver-meter" aria-hidden="true">

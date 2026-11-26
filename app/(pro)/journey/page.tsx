@@ -16,7 +16,7 @@ import { getMilestones } from "@/lib/milestones";
 import QuickSetup from "@/components/game/QuickSetup";
 import { createClient } from "@/lib/supabase/client";
 import { loadFinancialState, formatMoney, getPortfolioMix, type FinancialState } from "@/lib/financialState";
-import { getBadges, getFireScore, getInvestmentStreak } from "@/lib/fireScore";
+import { getBadges, getFireScore, getInvestmentStreak, totalIncome } from "@/lib/fireScore";
 import { getCurrentLevel, getFreedomMetrics, getFreedomPath, getMotivation, getRank, getXp, RANKS, sipForYears } from "@/lib/freedomPath";
 import { analyzeGoal, goalCategories, statusLabel } from "@/lib/goals";
 import { getLessonOfDay, lessons as allLessons } from "@/lib/wisdom";
@@ -83,7 +83,7 @@ export default function JourneyPage() {
     const rank = getRank(xp.total);
     const metrics = getFreedomMetrics(profile, options);
     const score = getFireScore(profile);
-    const rate = savingsRate(profile.monthly_income + (profile.monthly_investment_income ?? 0), profile.monthly_expenses);
+    const rate = savingsRate(totalIncome(profile), profile.monthly_expenses);
     return { profile, path, current, streak, badges, analyses, xp, rank, metrics, score, rate, motivation: getMotivation(metrics, current, streak), mix: getPortfolioMix(state.accounts) };
   }, [state]);
 
@@ -231,7 +231,7 @@ export default function JourneyPage() {
       {game.rate !== null && (() => {
         const tier = getSavingsTier(game.rate);
         const next = getNextTier(game.rate);
-        const needed = next ? cutNeededForRate(game.profile.monthly_income + (game.profile.monthly_investment_income ?? 0), game.profile.monthly_expenses, next.min) : 0;
+        const needed = next ? cutNeededForRate(totalIncome(game.profile), game.profile.monthly_expenses, next.min) : 0;
         return <a href="/save-more" className={`saver-strip tone-${tier.tone}`}>
           <span className="saver-strip-emoji">{tier.emoji}</span>
           <div><small>SAVER LEVEL · {game.rate.toFixed(0)}% SAVED</small><strong>{tier.name}</strong><span>{next ? (tier.tone === "danger" ? `Find ${money(needed)}/month to reach ${next.emoji} ${next.name}. Tap to hunt spending leaks.` : `Next: ${next.emoji} ${next.name} at ${next.min}% — ${money(needed)}/month away.`) : "Top saver level! Keep it up."}</span></div>

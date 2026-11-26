@@ -14,7 +14,8 @@ import { parseBudgetCsv, transactionFingerprint, type ParsedBudgetRow } from "@/
 const budgetCategories = ["housing", "utilities", "groceries", "dining", "transport", "healthcare", "insurance", "education", "family", "debt_repayment", "personal", "savings", "other"] as const;
 type BudgetCategory = (typeof budgetCategories)[number];
 type Transaction = { id: string; spent_on: string; category: BudgetCategory; amount: number; note: string };
-type MonthlyReview = { income: number; investment_income: number; expenses: number; invested: number; debt_paid: number };
+type MonthlyReview = { income: number; investment_income: number; expenses: number; invested: number; debt_paid: number; salary_savings: number };
+const toReview = (row: Record<string, unknown>): MonthlyReview => ({ income: Number(row.income), investment_income: Number(row.investment_income ?? 0), expenses: Number(row.expenses), invested: Number(row.invested), debt_paid: Number(row.debt_paid), salary_savings: Number(row.salary_pf ?? 0) + Number(row.salary_pension ?? 0) });
 const labels: Record<BudgetCategory, string> = { housing: "Housing", utilities: "Utilities", groceries: "Groceries", dining: "Dining out", transport: "Transport", healthcare: "Healthcare", insurance: "Insurance", education: "Education", family: "Family", debt_repayment: "Debt payments", personal: "Personal", savings: "Savings goal", other: "Other" };
 const today = () => new Date().toLocaleDateString("en-CA");
 const thisMonth = (date = today()) => `${date.slice(0, 7)}-01`;
@@ -59,17 +60,17 @@ export default function BudgetPage() {
       supabase.from("financial_profiles").select("monthly_income, currency").eq("user_id", session.user.id).maybeSingle(),
       supabase.from("monthly_budgets").select("category, target_amount").eq("user_id", session.user.id).eq("month_start", month),
       supabase.from("budget_transactions").select("id, spent_on, category, amount, note").eq("user_id", session.user.id).eq("month_start", month).order("spent_on", { ascending: false }),
-      supabase.from("monthly_checkins").select("income, investment_income, expenses, invested, debt_paid").eq("user_id", session.user.id).eq("month_start", month).maybeSingle(),
-      supabase.from("monthly_checkins").select("income, investment_income, expenses, invested, debt_paid").eq("user_id", session.user.id).lt("month_start", month).order("month_start", { ascending: false }).limit(1).maybeSingle(),
+      supabase.from("monthly_checkins").select("*").eq("user_id", session.user.id).eq("month_start", month).maybeSingle(),
+      supabase.from("monthly_checkins").select("*").eq("user_id", session.user.id).lt("month_start", month).order("month_start", { ascending: false }).limit(1).maybeSingle(),
     ]);
     const profile = profileResult.data;
     if (profile) {
       setIncome(current => current || String(profile.monthly_income ?? ""));
       setCurrency(profile.currency ?? "INR");
     }
-    if (checkinResult.data) setMonthlyReview({ income: Number(checkinResult.data.income), investment_income: Number(checkinResult.data.investment_income ?? 0), expenses: Number(checkinResult.data.expenses), invested: Number(checkinResult.data.invested), debt_paid: Number(checkinResult.data.debt_paid) });
+    if (checkinResult.data) setMonthlyReview(toReview(checkinResult.data));
     else setMonthlyReview(null);
-    if (previousCheckinResult.data) setPreviousReview({ income: Number(previousCheckinResult.data.income), investment_income: Number(previousCheckinResult.data.investment_income ?? 0), expenses: Number(previousCheckinResult.data.expenses), invested: Number(previousCheckinResult.data.invested), debt_paid: Number(previousCheckinResult.data.debt_paid) });
+    if (previousCheckinResult.data) setPreviousReview(toReview(previousCheckinResult.data));
     else setPreviousReview(null);
     if (budgetResult.error || transactionResult.error) {
       setMessage(`Run the monthly budget migration in Supabase, then refresh. ${budgetResult.error?.message ?? transactionResult.error?.message ?? ""}`);
@@ -90,8 +91,10 @@ export default function BudgetPage() {
     const spent = Object.values(monthlySpent).reduce((total, value) => total + value, 0);
     return { monthlyTargets, monthlySpent, allocated, spent, remaining: allocated - spent };
   }, [targets, transactions, month]);
-  const loggedSavingsRate = monthlyReview && monthlyReview.income > 0 ? ((monthlyReview.income - monthlyReview.expenses) / monthlyReview.income) * 100 : null;
-  const reviewInsights = monthlyReview ? getBudgetReview({ targets: values.monthlyTargets, spent: values.monthlySpent, income: monthlyReview.income, expenses: monthlyReview.expenses, invested: monthlyReview.invested, previous: previousReview }) : [];
+  // Savings rate on everything earned: take-home + EPF/NPS deducted from salary (same as the FIRE score).
+  const earned = (r: MonthlyReview) => ({ income: r.income + r.salary_savings, expenses: r.expenses, invested: r.invested + r.salary_savings });
+  const loggedSavingsRate = monthlyReview && earned(monthlyReview).income > 0 ? ((earned(monthlyReview).income - monthlyReview.expenses) / earned(monthlyReview).income) * 100 : null;
+  const reviewInsights = monthlyReview ? getBudgetReview({ targets: values.monthlyTargets, spent: values.monthlySpent, ...earned(monthlyReview), previous: previousReview ? earned(previousReview) : null }) : [];
 
   function createGuidedDraft() {
     try {

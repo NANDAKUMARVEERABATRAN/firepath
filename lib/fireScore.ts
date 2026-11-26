@@ -2,6 +2,8 @@ export type FinancialProfile = {
   age: number | null;
   monthly_income: number;
   monthly_investment_income?: number;
+  /** EPF/VPF + NPS (UAE: workplace savings + pension) deducted from salary; not part of monthly_income. */
+  monthly_salary_savings?: number;
   monthly_expenses: number;
   assets: number;
   investableAssets?: number;
@@ -28,12 +30,16 @@ export type ScoreCategory = { name: string; score: number; max: number; explanat
 
 const clamp = (value: number, max: number) => Math.min(max, Math.max(0, value));
 
+/** Everything earned in a month: take-home that reaches the bank + retirement savings deducted from salary. */
+export const totalIncome = (profile: Pick<FinancialProfile, "monthly_income" | "monthly_salary_savings">) => Math.max(0, profile.monthly_income) + Math.max(0, profile.monthly_salary_savings ?? 0);
+
 export function getFireScore(profile: FinancialProfile): { score: number; categories: ScoreCategory[]; netWorth: number; savingsRate: number; emergencyMonths: number; fireTarget: number; fireProgress: number; withdrawalRate: number; debtServiceRate: number } {
-  const income = Math.max(0, profile.monthly_income);
+  const income = totalIncome(profile);
   const expenses = Math.max(0, profile.monthly_expenses);
   const emergencyMonths = expenses > 0 ? profile.emergency_fund / expenses : 0;
   const savingsRate = income > 0 ? clamp(((income - expenses) / income) * 100, 100) : 0;
-  const investingRate = income > 0 ? clamp((profile.monthly_investment / income) * 100, 100) : 0;
+  // Salary deductions (EPF/NPS) are investing too, even though they're not FIRE-accessible until later.
+  const investingRate = income > 0 ? clamp(((profile.monthly_investment + (profile.monthly_salary_savings ?? 0)) / income) * 100, 100) : 0;
   const netWorth = profile.assets - profile.liabilities;
   const fireAssets = Math.max(0, profile.investableAssets ?? profile.fire_accessible_assets ?? profile.assets);
   const withdrawalRate = (profile.withdrawal_rate ?? 3.5) / 100;
@@ -63,7 +69,7 @@ export type ActionStep = { title: string; detail: string; href: string; priority
 
 export function getActionSteps(profile: FinancialProfile): ActionStep[] {
   const actions: ActionStep[] = [];
-  const income = Math.max(0, profile.monthly_income);
+  const income = totalIncome(profile);
   const expenses = Math.max(0, profile.monthly_expenses);
   const emergencyMonths = expenses > 0 ? profile.emergency_fund / expenses : 0;
   const debtPaymentRate = income > 0 ? (profile.monthlyDebtPayments ?? 0) / income : 0;
@@ -116,7 +122,8 @@ export function getInvestmentStreak(checkins: { month_start: string; invested: n
 }
 
 export function getBadges(profile: FinancialProfile, investmentStreak = 0): Badge[] {
-  const savingsRate = profile.monthly_income > 0 ? ((profile.monthly_income - profile.monthly_expenses) / profile.monthly_income) * 100 : 0;
+  const income = totalIncome(profile);
+  const savingsRate = income > 0 ? ((income - profile.monthly_expenses) / income) * 100 : 0;
   const emergencyMonths = profile.monthly_expenses > 0 ? profile.emergency_fund / profile.monthly_expenses : 0;
   const withdrawalRate = (profile.withdrawal_rate ?? 3.5) / 100;
   const target = profile.monthly_expenses > 0 && withdrawalRate > 0 ? (profile.monthly_expenses * 12) / withdrawalRate : 0;

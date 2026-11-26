@@ -5,7 +5,7 @@ import { normalizeSnapshots, type Snapshot } from "./progress.ts";
 import { countryFromCurrency, getCountry, readStoredCountry, storeCountry } from "./country.ts";
 
 export type AccountRow = { id: string; name: string; kind: "asset" | "liability"; category: string; investment_type: string | null; current_value: number; monthly_payment: number; is_high_interest: boolean; fire_treatment: string; property_use?: "self_occupied" | "rented" | "investment" | null; goal_id?: string | null };
-export type CheckinRow = { month_start: string; income: number; investment_income: number; expenses: number; invested: number; debt_paid: number };
+export type CheckinRow = { month_start: string; income: number; investment_income: number; expenses: number; invested: number; debt_paid: number; salary_savings: number };
 export type PlanRow = { retirement_age: number; inflation_rate: number; expected_return: number; withdrawal_rate: number; step_up_percent?: number; step_up_month?: number | null; step_up_done_year?: number | null };
 export type LessonRow = { lesson_id: string; answered_correctly: boolean; completed_at: string };
 
@@ -46,7 +46,7 @@ export async function loadFinancialState(supabase: SupabaseClient, userId: strin
     supabase.from("financial_profiles").select("*").eq("user_id", userId).maybeSingle(),
     supabase.from("financial_accounts").select("*").eq("user_id", userId),
     supabase.from("fire_plans").select("*").eq("user_id", userId).maybeSingle(),
-    supabase.from("monthly_checkins").select("month_start, income, investment_income, expenses, invested, debt_paid").eq("user_id", userId).order("month_start", { ascending: false }).limit(24),
+    supabase.from("monthly_checkins").select("*").eq("user_id", userId).order("month_start", { ascending: false }).limit(24),
     supabase.from("financial_goals").select("id, name, category, target_amount, target_date, saved_amount, monthly_contribution, expected_return, inflation_rate, completed_at").eq("user_id", userId).order("target_date", { ascending: true }),
     supabase.from("lesson_completions").select("lesson_id, answered_correctly, completed_at").eq("user_id", userId),
     supabase.from("badge_awards").select("badge_key").eq("user_id", userId),
@@ -57,7 +57,7 @@ export async function loadFinancialState(supabase: SupabaseClient, userId: strin
 
   // select("*") keeps the Journey working whether or not the property_use migration has been applied yet.
   const accounts: AccountRow[] = (accountsResult.data ?? []).map(row => ({ id: row.id, name: row.name, kind: row.kind, category: row.category, investment_type: row.investment_type ?? null, current_value: Number(row.current_value), monthly_payment: Number(row.monthly_payment), is_high_interest: Boolean(row.is_high_interest), fire_treatment: row.fire_treatment, property_use: row.property_use ?? null, goal_id: row.goal_id ?? null }));
-  const checkins: CheckinRow[] = (checkinResult.data ?? []).map(row => ({ month_start: row.month_start, income: Number(row.income), investment_income: Number(row.investment_income ?? 0), expenses: Number(row.expenses), invested: Number(row.invested), debt_paid: Number(row.debt_paid) }));
+  const checkins: CheckinRow[] = (checkinResult.data ?? []).map(row => ({ month_start: row.month_start, income: Number(row.income), investment_income: Number(row.investment_income ?? 0), expenses: Number(row.expenses), invested: Number(row.invested), debt_paid: Number(row.debt_paid), salary_savings: Number(row.salary_pf ?? 0) + Number(row.salary_pension ?? 0) }));
   // The saved profile currency decides the country (₹ India / AED UAE) across the whole app.
   const country = getCountry(countryFromCurrency(profileResult.data?.currency));
   if (profileResult.data?.currency && typeof window !== "undefined" && readStoredCountry() !== country.code) storeCountry(country.code);
@@ -76,6 +76,7 @@ export async function loadFinancialState(supabase: SupabaseClient, userId: strin
       age: data.age,
       monthly_income: Number(data.monthly_income),
       monthly_investment_income: Number(data.monthly_investment_income ?? 0),
+      monthly_salary_savings: Number(data.monthly_salary_pf ?? 0) + Number(data.monthly_salary_pension ?? 0),
       monthly_expenses: Number(data.monthly_expenses),
       assets: assets.length ? sum(assets) : Number(data.assets),
       investableAssets: assets.length ? sum(assets.filter(row => row.fire_treatment === "available" && !row.goal_id)) : Number(data.fire_accessible_assets ?? data.assets),
@@ -102,7 +103,7 @@ export async function loadFinancialState(supabase: SupabaseClient, userId: strin
   if (profile && checkins.length) {
     const recent = checkins.slice(0, 3);
     const average = (key: "income" | "investment_income" | "expenses" | "invested") => recent.reduce((total, entry) => total + entry[key], 0) / recent.length;
-    scoreProfile = { ...profile, monthly_income: average("income"), monthly_investment_income: average("investment_income"), monthly_expenses: average("expenses"), monthly_investment: average("invested") };
+    scoreProfile = { ...profile, monthly_income: average("income"), monthly_investment_income: average("investment_income"), monthly_expenses: average("expenses"), monthly_investment: average("invested"), monthly_salary_savings: recent[0].salary_savings || (profile.monthly_salary_savings ?? 0) };
   }
 
   return { userId, profile, scoreProfile, plan, accounts, checkins, goals, rawGoals, lessons: lessonResult.data ?? [], badgeKeys: (badgeResult.data ?? []).map(row => row.badge_key), warnings,
