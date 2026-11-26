@@ -15,5 +15,9 @@ out
 *.jks
 android/
 
+# Rendered videos (large; regenerate with `npm run render` in marketing/video)
+marketing/video/out/
+marketing/video/t.png
+
 .DS_Store
 Thumbs.db

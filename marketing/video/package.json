@@ -1,0 +1,14 @@
+{
+  "name": "firepath-video-maker",
+  "private": true,
+  "type": "module",
+  "description": "Renders FIREpath short videos (1080x1920 MP4) from specs in videos.mjs. Kept separate from the website so it never affects the app build.",
+  "scripts": {
+    "render": "node --experimental-strip-types --no-warnings render.mjs",
+    "still": "node --experimental-strip-types --no-warnings render.mjs --still"
+  },
+  "dependencies": {
+    "ffmpeg-static": "5.2.0",
+    "sharp": "0.34.4"
+  }
+}
