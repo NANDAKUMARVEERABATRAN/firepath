@@ -41,6 +41,14 @@ export const COUNTRIES: Record<CountryCode, CountryConfig> = {
   },
 };
 
+/**
+ * Countries open to new users. UAE support is built but switched off until its regulatory, VAT and payment
+ * questions are settled; add "AE" here to turn it back on. Existing AED profiles keep working.
+ */
+export const ENABLED_COUNTRIES: CountryCode[] = ["IN"];
+export const isCountryEnabled = (code: CountryCode) => ENABLED_COUNTRIES.includes(code);
+const firstEnabled = (): CountryCode => ENABLED_COUNTRIES[0] ?? "IN";
+
 export const countryFromCurrency = (currency?: string | null): CountryCode => (currency === "AED" ? "AE" : "IN");
 export const getCountry = (code?: CountryCode | null) => COUNTRIES[code ?? "IN"] ?? COUNTRIES.IN;
 
@@ -48,19 +56,19 @@ export const getCountry = (code?: CountryCode | null) => COUNTRIES[code ?? "IN"]
 export function detectCountry(): CountryCode {
   try {
     const zone = Intl.DateTimeFormat().resolvedOptions().timeZone ?? "";
-    if (zone === "Asia/Dubai") return "AE";
+    if (zone === "Asia/Dubai" && isCountryEnabled("AE")) return "AE";
     if (zone === "Asia/Kolkata" || zone === "Asia/Calcutta") return "IN";
     const languages = typeof navigator !== "undefined" ? navigator.languages ?? [navigator.language] : [];
-    if (languages.some(lang => /-AE$/i.test(lang))) return "AE";
+    if (languages.some(lang => /-AE$/i.test(lang)) && isCountryEnabled("AE")) return "AE";
   } catch { /* fall through */ }
-  return "IN";
+  return firstEnabled();
 }
 
 export const COUNTRY_KEY = "ff-country";
 export const COUNTRY_EVENT = "ff-country-change";
 
 export function readStoredCountry(): CountryCode | null {
-  try { const value = window.localStorage.getItem(COUNTRY_KEY); return value === "AE" || value === "IN" ? value : null; } catch { return null; }
+  try { const value = window.localStorage.getItem(COUNTRY_KEY); return (value === "AE" || value === "IN") && isCountryEnabled(value) ? value : null; } catch { return null; }
 }
 
 export function storeCountry(code: CountryCode) {

@@ -10,7 +10,7 @@ import VoiceEntry from "@/components/forms/VoiceEntry";
 import Celebration from "@/components/game/Celebration";
 import { parseLabeledAmount } from "@/lib/voiceForms";
 import { amountInWords, rupees } from "@/lib/format";
-import { COUNTRIES, countryFromCurrency, detectCountry, getCountry, readStoredCountry, storeCountry, type CountryCode } from "@/lib/country";
+import { COUNTRIES, ENABLED_COUNTRIES, countryFromCurrency, detectCountry, getCountry, readStoredCountry, storeCountry, type CountryCode } from "@/lib/country";
 import { getNetWorthBreakdown, type NetWorthBreakdown } from "@/lib/netWorth";
 import { fireReasons, fireStyles, getWhyResult, styleTip } from "@/lib/fireWhy";
 
@@ -89,7 +89,7 @@ const questions: (Question & { show?: (p: Profile) => boolean; feedback?: (p: Pr
   { id: "dream-age", section: "Your why", emoji: "🎯", title: "By what age would you love to be free?", subtitle: "Dream a little. We’ll show you what it takes to get there.", kind: "dreamAge",
     error: p => { const a = Number(p.dream_age); return p.dream_age && (a < 18 || a > 100 || (p.age && a < Number(p.age))) ? "Pick an age between your current age and 100." : null; },
     feedback: p => { const why = whyOf(p); return why.purposeScore ? `Purpose score: ${why.purposeScore}/100 — ${why.label}` : null; } },
-  { id: "country", section: "About you", emoji: "🌍", title: "Where do you live?", subtitle: "We’ll use your currency, local investments, retirement products and typical goals.", kind: "country" },
+  { id: "country", show: () => ENABLED_COUNTRIES.length > 1, section: "About you", emoji: "🌍", title: "Where do you live?", subtitle: "We’ll use your currency, local investments, retirement products and typical goals.", kind: "country" },
   { id: "age", section: "About you", emoji: "🎂", title: "How old are you?", subtitle: "Your age sets how long your money has to grow.", kind: "age",
     feedback: p => { const age = Number(p.age); return age >= 18 && age < 60 ? `${60 - age} years of compounding ahead of you before 60 — time is your biggest asset.` : null; },
     error: p => { const age = Number(p.age); return p.age && (age < 18 || age > 100) ? "Please enter an age between 18 and 100." : null; } },
@@ -284,7 +284,7 @@ export default function ProfilePage() {
 
         {question.kind === "country" ? (
           <div className="qn-choices">
-            {(Object.keys(COUNTRIES) as CountryCode[]).map(code => { const c = COUNTRIES[code]; const on = CUR === code; return <button key={code} type="button" className={`qn-choice${on ? " selected" : ""}`} onClick={() => { const updated = { ...profile, currency: c.currency }; set("currency", c.currency); storeCountry(code); setTimeout(() => { if (returning) { setStep(visible.length + 1); void save(updated, "quiet"); } else setStep(s => s + 1); }, 180); }}>{on && <Check size={18} />}{c.flag} {c.name} <small className="qn-choice-sub">{c.currency}</small></button>; })}
+            {ENABLED_COUNTRIES.map(code => { const c = COUNTRIES[code]; const on = CUR === code; return <button key={code} type="button" className={`qn-choice${on ? " selected" : ""}`} onClick={() => { const updated = { ...profile, currency: c.currency }; set("currency", c.currency); storeCountry(code); setTimeout(() => { if (returning) { setStep(visible.length + 1); void save(updated, "quiet"); } else setStep(s => s + 1); }, 180); }}>{on && <Check size={18} />}{c.flag} {c.name} <small className="qn-choice-sub">{c.currency}</small></button>; })}
           </div>
         ) : question.kind === "yesno" ? (
           <div className="qn-choices">

@@ -47,3 +47,10 @@ test("India pricing: ₹75/month or ₹500/year (44% saving); UAE unchanged", ()
   assert.equal(yearlySavingPercent("IN"), 44);
   assert.equal(yearlySavingPercent("AE"), 34);
 });
+
+import { ENABLED_COUNTRIES, isCountryEnabled } from "../lib/country.ts";
+test("only India is open to new users for now; UAE settings are kept for later", () => {
+  assert.deepEqual(ENABLED_COUNTRIES, ["IN"]);
+  assert.equal(isCountryEnabled("AE"), false);
+  assert.equal(getCountry("AE").currency, "AED"); // existing AED profiles still format correctly
+});

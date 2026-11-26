@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { COUNTRY_EVENT, detectCountry, getCountry, readStoredCountry, storeCountry, type CountryCode } from "./country";
+import { COUNTRY_EVENT, detectCountry, getCountry, isCountryEnabled, readStoredCountry, storeCountry, type CountryCode } from "./country";
 
 /**
  * Current country for this visitor: their saved choice, else a guess from time zone/language.
@@ -12,7 +12,7 @@ export function useCountry() {
   useEffect(() => {
     // A link like ?country=ae (e.g. from a UAE ad campaign) chooses the country explicitly.
     const fromLink = new URLSearchParams(window.location.search).get("country")?.toUpperCase();
-    if (fromLink === "AE" || fromLink === "IN") storeCountry(fromLink);
+    if ((fromLink === "AE" || fromLink === "IN") && isCountryEnabled(fromLink)) storeCountry(fromLink);
     setCode(readStoredCountry() ?? detectCountry());
     const onChange = (event: Event) => setCode((event as CustomEvent<CountryCode>).detail);
     window.addEventListener(COUNTRY_EVENT, onChange);

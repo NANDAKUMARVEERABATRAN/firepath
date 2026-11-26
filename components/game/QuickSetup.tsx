@@ -7,7 +7,7 @@ import { getFireScore } from "@/lib/fireScore";
 import { formatMoney } from "@/lib/financialState";
 import { yearsToTarget } from "@/lib/freedomPath";
 import { CALCULATOR_KEY, type CalculatorSnapshot } from "@/lib/subscription";
-import { COUNTRIES, type CountryCode, type CountryConfig } from "@/lib/country";
+import { COUNTRIES, ENABLED_COUNTRIES, type CountryConfig } from "@/lib/country";
 import { useCountry } from "@/lib/useCountry";
 
 type Values = { age: string; income: string; expenses: string; investments: string; emergency: string; sip: string };
@@ -78,7 +78,7 @@ export default function QuickSetup({ userId, name, onDone }: { userId: string; n
       </div>
       <h1>{current.title}</h1>
       <p className="quick-setup-sub">{current.subtitle}</p>
-      {step === 0 && <div className="qn-chips setup-country">{(Object.keys(COUNTRIES) as CountryCode[]).map(code => <button type="button" key={code} className={country.code === code ? "selected" : ""} onClick={() => setCountry(code)}>{COUNTRIES[code].flag} I live in {COUNTRIES[code].name}</button>)}</div>}
+      {step === 0 && ENABLED_COUNTRIES.length > 1 && <div className="qn-chips setup-country">{ENABLED_COUNTRIES.map(code => <button type="button" key={code} className={country.code === code ? "selected" : ""} onClick={() => setCountry(code)}>{COUNTRIES[code].flag} I live in {COUNTRIES[code].name}</button>)}</div>}
       <div className="quick-setup-fields">{current.fields.map(field => <label className="profile-field" key={field.key}><span>{field.label}</span><input type="number" inputMode="numeric" min="0" step="any" placeholder={field.placeholder} value={values[field.key]} autoFocus={field === current.fields[0]} onChange={event => setValues(v => ({ ...v, [field.key]: event.target.value }))} />{field.hint && <small>{field.hint}</small>}</label>)}</div>
       {step === 2 && preview && <div className="setup-preview"><span>Your FIRE number</span><strong>{formatMoney(preview.target, country.currency)}</strong><small>{preview.years === null ? "Start investing monthly to set your freedom date." : preview.years === 0 ? "You may already be there! 🎉" : `At this pace, about ${preview.years.toFixed(0)} years to freedom — let’s make that shorter.`}</small></div>}
       {message && <p className="profile-status">{message}</p>}

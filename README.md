@@ -33,7 +33,7 @@ Run the SQL files in `supabase/migrations/` in filename order from the Supabase 
 
 ### Countries
 
-India and the UAE are supported. `lib/country.ts` holds each country's currency, number words (lakh/crore vs thousand/million), default assumptions, calculator ranges and pricing. The country comes from the signed-in user's profile currency, otherwise from the visitor's saved choice, a `?country=ae` link, or their time zone/language.
+India is open to new users; UAE support is built but switched off (`ENABLED_COUNTRIES` in `lib/country.ts`) until its licensing, VAT and payment questions are settled. `lib/country.ts` holds each country's currency, number words (lakh/crore vs thousand/million), default assumptions, calculator ranges and pricing. The country comes from the signed-in user's profile currency, otherwise from the visitor's saved choice, a `?country=ae` link, or their time zone/language.
 
 ### Free vs Pro
 

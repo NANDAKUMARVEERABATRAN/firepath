@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { BookOpen, ChevronDown, Flame, Menu, Plus, Target, TrendingUp, Wallet, X } from "lucide-react";
 import AuthButton from "@/components/auth/AuthButton";
 import { PRICING } from "@/lib/subscription";
-import { COUNTRIES, type CountryCode } from "@/lib/country";
+import { COUNTRIES, ENABLED_COUNTRIES } from "@/lib/country";
 import { useCountry } from "@/lib/useCountry";
 
 const primary = [
@@ -61,9 +61,9 @@ export default function Header() {
             </div>
           </nav>
           <div className="nav-actions">
-            <div className="country-switch" role="group" aria-label="Country">
-              {(Object.keys(COUNTRIES) as CountryCode[]).map(code => <button key={code} type="button" aria-pressed={country.code === code} className={country.code === code ? "on" : ""} onClick={() => setCountry(code)} title={`${COUNTRIES[code].name} · ${COUNTRIES[code].currency}`}><b>{COUNTRIES[code].code === "IN" ? "₹" : "AED"}</b><span>{COUNTRIES[code].name}</span></button>)}
-            </div>
+            {ENABLED_COUNTRIES.length > 1 && <div className="country-switch" role="group" aria-label="Country">
+              {ENABLED_COUNTRIES.map(code => <button key={code} type="button" aria-pressed={country.code === code} className={country.code === code ? "on" : ""} onClick={() => setCountry(code)} title={`${COUNTRIES[code].name} · ${COUNTRIES[code].currency}`}><b>{COUNTRIES[code].code === "IN" ? "₹" : "AED"}</b><span>{COUNTRIES[code].name}</span></button>)}
+            </div>}
             <a href="/check-in" className="nav-log"><Plus size={15} /> Log month</a>
             <AuthButton />
           </div>
