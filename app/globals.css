@@ -513,3 +513,12 @@
 .qn-skip-chip{align-self:flex-start;border:1px solid #dce5e8;background:#fff;border-radius:20px;padding:7px 14px;font:inherit;font-size:13px;cursor:pointer;color:#41515f}
 .qn-skip-chip:hover{border-color:var(--green);color:var(--green-dark)}
 .qn-rate-line{font-size:14px;color:#41515f;margin:10px 0}.qn-rate-line b{color:var(--green-dark)}
+
+/* FIRE plan: readable values in the light "starting point" card + transparent maths */
+.plan-inputs .plan-result-line{color:#556575;font-size:13px;border-top-color:var(--line)}
+.plan-inputs .plan-result-line b{color:var(--navy);font-size:15px}
+.plan-math{font-size:11px!important;color:#9fb3c8!important;background:#ffffff0d;border-radius:10px;padding:8px 10px;margin:0 0 4px}
+.plan-breakdown{list-style:none;margin:0 0 8px;padding:0 0 0 12px;border-left:2px solid #ffffff26}
+.plan-breakdown li{display:flex;justify-content:space-between;gap:10px;font-size:11px;color:#a8b8c2;padding:4px 0}
+.plan-breakdown b{color:#dfe7ee;white-space:nowrap}
+.plan-warn{font-size:12px!important;color:#ffe08a!important;background:#ffc94d1f;border:1px solid #ffc94d55;border-radius:10px;padding:8px 10px;margin:6px 0}

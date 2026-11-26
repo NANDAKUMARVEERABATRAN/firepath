@@ -114,7 +114,7 @@ export async function loadFinancialState(supabase: SupabaseClient, userId: strin
 
 export function formatMoney(value: number, currency: "INR" | "AED" | "USD" = "INR"): string {
   const locale = currency === "INR" ? "en-IN" : currency === "AED" ? "en-AE" : "en-US";
-  return new Intl.NumberFormat(locale, { style: "currency", currency, maximumFractionDigits: 0, notation: Math.abs(value) >= 10_000_000 ? "compact" : "standard" }).format(value);
+  return new Intl.NumberFormat(locale, { style: "currency", currency, maximumFractionDigits: Math.abs(value) >= 10000000 ? 2 : 0, notation: Math.abs(value) >= 10000000 ? "compact" : "standard" }).format(value);
 }
 
 /** Groups assets into a readable portfolio mix. */

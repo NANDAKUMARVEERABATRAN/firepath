@@ -71,7 +71,7 @@ export function storeCountry(code: CountryCode) {
 /** Formats money for a country: "₹1,20,000" / "AED 15,000"; compact for very large amounts. */
 export function formatCountryMoney(value: number, code: CountryCode = "IN"): string {
   const c = getCountry(code);
-  return new Intl.NumberFormat(c.locale, { style: "currency", currency: c.currency, maximumFractionDigits: 0, notation: Math.abs(value) >= 10_000_000 ? "compact" : "standard" }).format(value);
+  return new Intl.NumberFormat(c.locale, { style: "currency", currency: c.currency, maximumFractionDigits: Math.abs(value) >= 10000000 ? 2 : 0, notation: Math.abs(value) >= 10000000 ? "compact" : "standard" }).format(value);
 }
 
 /** Amount in words: India "1.2 lakh" / "2.5 crore"; UAE "120 thousand" / "2.5 million". */
