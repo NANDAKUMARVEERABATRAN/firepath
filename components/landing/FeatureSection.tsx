@@ -1,7 +1,7 @@
 import { BookOpen, Gauge, Map, Target, Trophy, Wallet } from "lucide-react";
 
 const features = [
-  { icon: Map, title: "The Freedom Path", text: "Clear 10 levels — from your first money map to financial independence — with one clear next step at every stage." },
+  { icon: Map, title: "The Freedom Path", text: "Clear 11 levels — from your first money map to financial independence and Fat FIRE — with one clear next step at every stage." },
   { icon: Trophy, title: "XP, Ranks & Streaks", text: "Earn XP for check-ins, lessons and goals. Climb from Rookie Saver to Financially Free Legend." },
   { icon: Gauge, title: "FIRE Progress Score", text: "A 100-point score across savings, investing, emergency fund, protection, debt and FIRE progress." },
   { icon: BookOpen, title: "Daily Book Lessons", text: "One idea a day from The Psychology of Money, Rich Dad Poor Dad and more — with an Indian example and quiz." },

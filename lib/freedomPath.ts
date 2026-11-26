@@ -24,6 +24,11 @@ export type PathOptions = {
   inflation?: number; // %
 };
 
+/** Number of Freedom Path levels (money map → … → financially independent → Fat FIRE). */
+export const PATH_LEVELS = 11;
+/** Fat FIRE = this multiple of your FIRE number. */
+export const FAT_FIRE_MULTIPLE = 1.5;
+
 const ratio = (value: number, target: number) => (target > 0 ? Math.max(0, Math.min(1, value / target)) : 0);
 
 /** Years (fractional) for `assets` growing at `realRate` with `monthly` contributions to reach `target`. Null if never within `maxYears`. */
@@ -85,6 +90,7 @@ export function getFreedomPath(profile: FinancialProfile, options: PathOptions =
   const realRate = (options.expectedReturn ?? 10) - (options.inflation ?? 6);
   const yearsLeft = Math.max(0, (options.retirementAge ?? 60) - (profile.age ?? 30));
   const coastNumber = coastFireNumber(score.fireTarget, yearsLeft, realRate);
+  const fatTarget = score.fireTarget * FAT_FIRE_MULTIPLE;
   const investRate = income > 0 ? profile.monthly_investment / income : 0;
   const highInterest = profile.highInterestDebt ?? 0;
   const uae = profile.currency === "AED";
@@ -157,6 +163,12 @@ export function getFreedomPath(profile: FinancialProfile, options: PathOptions =
       why: "Your investments can fund your lifestyle. Work becomes a choice — the highest dividend money pays is control over your time.",
       howToClear: "Reach 100% of your FIRE target.",
       href: "/plan", cleared: score.fireProgress >= 100, progress: ratio(score.fireProgress, 100), progressLabel: `${score.fireProgress.toFixed(1)}% of target`,
+    },
+    {
+      id: "fat", title: "Fat FIRE", book: "Die With Zero",
+      why: "Freedom with room to spare: 50% more than your FIRE number. More travel and generosity, and a cushion that lets you ride out bad market years without cutting back.",
+      howToClear: `Grow FIRE-accessible investments to about ${Math.round(fatTarget).toLocaleString(uae ? "en-AE" : "en-IN")} ${profile.currency} (1.5× your FIRE number).`,
+      href: "/plan", cleared: fatTarget > 0 && accessible >= fatTarget, progress: ratio(accessible, fatTarget), progressLabel: `${(ratio(accessible, fatTarget) * 100).toFixed(1)}% of your Fat FIRE number`,
     },
   ];
   // Coast FIRE comes before Halfway only when it's the smaller milestone. With few years left to grow, the
@@ -260,7 +272,8 @@ export function getFreedomMetrics(profile: FinancialProfile, options: PathOption
 }
 
 export function getMotivation(metrics: FreedomMetrics, current: PathLevel | null, streak: number): { headline: string; body: string } {
-  if (!current) return { headline: "You made it. You’re financially independent.", body: "Protect what you built: keep your buffer, review assumptions yearly, and spend on what truly matters to you." };
+  if (!current) return { headline: "Fat FIRE reached. Freedom with room to spare. 🥂", body: "Protect what you built: keep your buffer, review assumptions yearly, and spend generously on what truly matters to you." };
+  if (current.id === "fat") return { headline: "You’re financially independent. 🎉", body: "Work is now a choice. Bonus level: Fat FIRE, 1.5× your FIRE number for extra comfort and a cushion against bad markets." };
   if (streak >= 3) return { headline: `${streak}-month investing streak 🔥`, body: `Consistency beats intensity. Keep the streak alive and clear “${current.title}” next.` };
   if (metrics.freedomMonths >= 12) return { headline: `You already own ${Math.floor(metrics.freedomMonths / 12)} year${metrics.freedomMonths >= 24 ? "s" : ""} of freedom.`, body: `Your FIRE-accessible money could fund your current lifestyle for ${metrics.freedomMonths.toFixed(0)} months. Every SIP adds more.` };
   if (metrics.freedomMonths >= 1) return { headline: `You already own ${metrics.freedomMonths.toFixed(1)} months of freedom.`, body: `That’s time you could live without a salary. Your next level: ${current.title}.` };

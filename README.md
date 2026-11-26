@@ -123,7 +123,7 @@ npm run start
 ## What's included
 
 - **Journey hub (`/journey`)** — the game layer and landing page after sign-in:
-  - 10-level Freedom Path (money map → cash flow → buffers → protection → debt → pay yourself first → Coast FIRE → halfway → FI), each tied to a book idea and a "how to clear it" action (`lib/freedomPath.ts`)
+  - 11-level Freedom Path (money map → cash flow → buffers → protection → debt → pay yourself first → Coast FIRE → halfway → FI → Fat FIRE at 1.5× the FIRE number; Coast and halfway swap order when the Coast number is above 50% of the target), each tied to a book idea and a "how to clear it" action (`lib/freedomPath.ts`)
   - XP from levels, badges, check-ins, streaks, lessons and goals; 10 ranks with a rank-up celebration
   - Months of freedom owned, estimated years/age to FIRE, and a "power move" showing how an extra monthly investment changes the date
   - Daily book lesson with an Indian example, quiz and micro-challenge (`lib/wisdom.ts`)

@@ -12,6 +12,7 @@ import { getGameSummary } from "@/lib/gameSummary";
 import { getProStatus, PRICING, type ProStatus, type SubscriptionRow } from "@/lib/subscription";
 import { countryFromCurrency, formatCountryMoney, getCountry, priceText } from "@/lib/country";
 import { lessons as allLessons } from "@/lib/wisdom";
+import { PATH_LEVELS } from "@/lib/freedomPath";
 
 type Row = SubscriptionRow & { cancel_reason?: string | null };
 type Step = "overview" | "proud" | "why" | "offer" | "done";
@@ -110,7 +111,7 @@ export default function AccountPage() {
           <div className="proud-grid">
             <div><span>Rank</span><strong>{summary.rank.name}</strong><small>{summary.xp.toLocaleString("en-IN")} XP</small></div>
             <div><span>FIRE progress</span><strong>{summary.metrics.fireProgress.toFixed(1)}%</strong><small>{summary.history.months > 0 ? `${summary.history.progressGain >= 0 ? "+" : ""}${summary.history.progressGain.toFixed(1)}% since you joined` : "and climbing"}</small></div>
-            <div><span>Freedom levels cleared</span><strong>{summary.levelsCleared} / 10</strong><small>{summary.badges} badges earned</small></div>
+            <div><span>Freedom levels cleared</span><strong>{summary.levelsCleared} / {PATH_LEVELS}</strong><small>{summary.badges} badges earned</small></div>
             <div><span>Investing streak</span><strong>{summary.streak} month{summary.streak === 1 ? "" : "s"} 🔥</strong><small>{summary.checkins} check-ins logged</small></div>
             {summary.history.months > 0 && <div><span>FIRE portfolio growth</span><strong>{summary.history.portfolioGain >= 0 ? "+" : "−"}{money(Math.abs(summary.history.portfolioGain))}</strong><small>in {summary.history.months} month{summary.history.months === 1 ? "" : "s"}</small></div>}
             <div><span>Months of freedom you own</span><strong>{summary.metrics.freedomMonths.toFixed(1)}</strong><small>{summary.metrics.fireAge ? `free around age ${summary.metrics.fireAge}` : "keep investing to set a date"}</small></div>
@@ -119,7 +120,7 @@ export default function AccountPage() {
             <ul>
               <li>🔥 Your {summary.streak > 0 ? `${summary.streak}-month ` : ""}investing streak and monthly missions</li>
               <li>📈 Your progress-over-time chart and freedom-date tracking</li>
-              <li>🗺️ Your next Freedom Path level{summary.levelsCleared < 10 ? ` (level ${summary.levelsCleared + 1})` : ""}</li>
+              <li>🗺️ Your next Freedom Path level{summary.levelsCleared < PATH_LEVELS ? ` (level ${summary.levelsCleared + 1})` : ""}</li>
               <li>📚 {Math.max(0, allLessons.length - summary.lessons)} book lessons you haven’t read yet</li>
               {summary.goals > 0 && <li>🎯 Tracking for your {summary.goals} goal{summary.goals === 1 ? "" : "s"}</li>}
             </ul>

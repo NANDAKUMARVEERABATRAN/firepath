@@ -10,7 +10,7 @@ import { getProStatus, hasPro, type ProStatus, type SubscriptionRow } from "@/li
 const rows: [string, boolean, boolean][] = [
   ["FIRE calculator & freedom number", true, true],
   ["Your freedom age + what-if lever", true, true],
-  ["10-level Freedom Path with next steps", false, true],
+  ["11-level Freedom Path with next steps", false, true],
   ["100-point FIRE score & badges", false, true],
   ["Daily book lessons & quizzes", false, true],
   ["XP, ranks and investing streaks", false, true],

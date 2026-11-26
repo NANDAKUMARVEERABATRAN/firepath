@@ -17,7 +17,7 @@ import QuickSetup from "@/components/game/QuickSetup";
 import { createClient } from "@/lib/supabase/client";
 import { loadFinancialState, formatMoney, getPortfolioMix, type FinancialState } from "@/lib/financialState";
 import { getBadges, getFireScore, getInvestmentStreak, totalIncome } from "@/lib/fireScore";
-import { getCurrentLevel, getFreedomMetrics, getFreedomPath, getMotivation, getRank, getXp, RANKS, sipForYears } from "@/lib/freedomPath";
+import { getCurrentLevel, getFreedomMetrics, getFreedomPath, getMotivation, getRank, getXp, PATH_LEVELS, RANKS, sipForYears } from "@/lib/freedomPath";
 import { analyzeGoal, goalCategories, statusLabel } from "@/lib/goals";
 import { getLessonOfDay, lessons as allLessons } from "@/lib/wisdom";
 import { fireStyles, getWhyResult, styleTip } from "@/lib/fireWhy";
@@ -167,7 +167,7 @@ export default function JourneyPage() {
       <section className="journey-welcome">
         <p className="eyebrow"><Rocket size={14} /> YOUR FIRE GAME</p>
         <h1>Turn financial freedom into a game you can win.</h1>
-        <p>Clear 10 levels from “money map” to “financially independent”. Earn XP for every check-in, lesson and goal. Learn one idea a day from the world’s best money books.</p>
+        <p>Clear 11 levels from “money map” to “financially independent” and Fat FIRE. Earn XP for every check-in, lesson and goal. Learn one idea a day from the world’s best money books.</p>
         <Link href="/#fire-calculator" className="button button-primary">Sign in with Google to start</Link>
       </section>
     ) : !game && userId && state && !state.profile ? (
@@ -183,7 +183,7 @@ export default function JourneyPage() {
       {state?.warnings.map(warning => <p key={warning} className="account-source-note">{warning}</p>)}
       {message && message !== "signin" && <p className="profile-status" role="status">{message}</p>}
 
-      <div className="journey-greeting"><h1>{greeting()}{firstName ? `, ${firstName}` : ""} 👋</h1><p>{game.current ? <>Today’s focus: <b>{game.current.title}</b></> : "You’re financially independent. Keep it that way."}</p></div>
+      <div className="journey-greeting"><h1>{greeting()}{firstName ? `, ${firstName}` : ""} 👋</h1><p>{game.current ? <>Today’s focus: <b>{game.current.title}</b></> : "Fat FIRE reached. Keep it that way."}</p></div>
 
       {(() => {
         const why = state?.why;
@@ -216,7 +216,7 @@ export default function JourneyPage() {
         <div className="hero-stats">
           <div><Flame size={18} /><strong>{game.streak}</strong><span>month investing streak</span></div>
           <div><Sparkles size={18} /><strong>{game.score.score}</strong><span>FIRE score /100</span></div>
-          <div><Trophy size={18} /><strong>{game.path.filter(level => level.cleared).length}/10</strong><span>levels cleared</span></div>
+          <div><Trophy size={18} /><strong>{game.path.filter(level => level.cleared).length}/{PATH_LEVELS}</strong><span>levels cleared</span></div>
         </div>
       </section>
 
@@ -270,10 +270,10 @@ export default function JourneyPage() {
             <div className="quest-do"><strong>How to clear it</strong><span>{game.current.howToClear}</span></div>
             <Link href={game.current.href} className="button button-primary">Take action <ArrowRight size={16} /></Link>
             <small className="quest-reward">Reward: +250 XP · Inspired by {game.current.book}</small>
-          </article> : <article className="quest-card done"><h2>🎉 All 10 levels cleared!</h2><p>You’ve reached financial independence on paper. Keep checking in yearly to stay there.</p></article>}
+          </article> : <article className="quest-card done"><h2>🥂 All {PATH_LEVELS} levels cleared: Fat FIRE!</h2><p>You’ve reached financial independence with room to spare. Keep checking in yearly to stay there.</p></article>}
 
           <section className="path-section">
-            <div className="section-heading"><p className="eyebrow"><MapIcon size={14} /> THE FREEDOM PATH</p><h2>10 levels to financial independence.</h2><p>Follow them in order — each one makes the next one safer.</p></div>
+            <div className="section-heading"><p className="eyebrow"><MapIcon size={14} /> THE FREEDOM PATH</p><h2>{PATH_LEVELS} levels to financial independence and beyond.</h2><p>Follow them in order — each one makes the next one safer.</p></div>
             <ol className="path-list">{game.path.map(level => {
               const isCurrent = game.current?.id === level.id;
               return <li key={level.id} className={`path-level${level.cleared ? " cleared" : ""}${isCurrent ? " current" : ""}`}>

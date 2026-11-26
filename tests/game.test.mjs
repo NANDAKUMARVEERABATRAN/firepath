@@ -11,10 +11,11 @@ const profile = (overrides = {}) => ({
   currency: "INR", highInterestDebt: 0, withdrawal_rate: 4, ...overrides,
 });
 
-test("freedom path has 10 ordered levels and finds the first uncleared one", () => {
+test("freedom path has 11 ordered levels (ending in Fat FIRE) and finds the first uncleared one", () => {
   const path = getFreedomPath(profile());
-  assert.equal(path.length, 10);
-  assert.deepEqual(path.map(level => level.level), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  assert.equal(path.length, 11);
+  assert.deepEqual(path.map(level => level.level), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+  assert.equal(path.at(-1).id, "fat");
   assert.ok(path.slice(0, 7).every(level => level.cleared), "basics through pay-yourself-first should be cleared");
   assert.equal(getCurrentLevel(path)?.id, "coast");
 });
@@ -85,4 +86,15 @@ test("Coast FIRE is listed after Halfway when the Coast number is more than half
   assert.ok(ids.indexOf("halfway") < ids.indexOf("coast")); // 10 years at 4% → Coast ≈ 68% of target
   const young = pathFor({ ...p, age: 25 }, { retirementAge: 60, expectedReturn: 10, inflation: 6 }).map(l => l.id);
   assert.ok(young.indexOf("coast") < young.indexOf("halfway")); // 35 years → Coast ≈ 25%
+});
+
+test("Fat FIRE level needs 1.5× the FIRE number", () => {
+  const base = { age: 40, monthly_income: 200000, monthly_expenses: 50000, assets: 0, liabilities: 0, emergency_fund: 600000, monthly_investment: 50000, has_health_insurance: true, health_cover_amount: 1000000, has_term_insurance: false, currency: "INR", withdrawal_rate: 4 };
+  const target = 50000 * 12 / 0.04; // ₹1.5 Cr
+  const atFire = getFreedomPath({ ...base, assets: target, investableAssets: target });
+  assert.ok(atFire.find(l => l.id === "free").cleared);
+  assert.ok(!atFire.find(l => l.id === "fat").cleared);
+  assert.equal(getCurrentLevel(atFire).id, "fat");
+  const atFat = getFreedomPath({ ...base, assets: target * 1.5, investableAssets: target * 1.5 });
+  assert.ok(atFat.find(l => l.id === "fat").cleared);
 });

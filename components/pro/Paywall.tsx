@@ -8,7 +8,7 @@ import { getCountry, priceText } from "@/lib/country";
 import { useCountry } from "@/lib/useCountry";
 
 export const proBenefits = [
-  { emoji: "🗺️", title: "Your 10-level Freedom Path", text: "Always know your next step — from first budget to financial independence." },
+  { emoji: "🗺️", title: "Your 11-level Freedom Path", text: "Always know your next step — from first budget to financial independence." },
   { emoji: "🎯", title: "FIRE score & freedom date", text: "A 100-point score, the age you could be free, and a slider to bring it closer." },
   { emoji: "📚", title: "Daily lessons from top money books", text: "Psychology of Money, Rich Dad Poor Dad and more — in 2 minutes, with Indian examples." },
   { emoji: "🏆", title: "XP, ranks, streaks & badges", text: "Turn good money habits into a game you actually want to play." },
