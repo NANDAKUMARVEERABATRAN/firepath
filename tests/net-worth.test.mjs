@@ -58,3 +58,11 @@ test("net worth breakdown separates home, investment property, later money and l
   assert.equal(b.netWorth, 7_950_000);
   assert.equal(b.homeEquity, 3_000_000);
 });
+
+import { bucketOf } from "../lib/netWorth.ts";
+test("each item lands in exactly one group; EPF/NPS go to later access, never goals", () => {
+  assert.equal(bucketOf({ kind: "asset", category: "investment", fire_treatment: "later", goal_id: null }), "laterRetirement");
+  assert.equal(bucketOf({ kind: "asset", category: "investment", fire_treatment: "available", goal_id: "g1" }), "goalMoney");
+  assert.equal(bucketOf({ kind: "asset", category: "other", fire_treatment: "excluded", goal_id: null }), "otherOutside"); // jewellery you keep
+  assert.equal(bucketOf({ kind: "liability", category: "gold_loan", fire_treatment: "excluded", goal_id: null }), "otherLoans");
+});

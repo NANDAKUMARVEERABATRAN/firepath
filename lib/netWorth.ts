@@ -33,21 +33,19 @@ export type NetWorthBreakdown = {
   homeEquity: number;
 };
 
+export type Bucket = "fireInvestments" | "investmentProperty" | "goalMoney" | "laterRetirement" | "home" | "otherOutside" | "homeLoan" | "otherLoans";
+
+/** Which group of "Where your net worth sits" an item belongs to (one rule, used for totals and item lists). */
+export function bucketOf(row: Pick<Row, "kind" | "category" | "fire_treatment" | "goal_id">): Bucket {
+  if (row.kind === "liability") return row.category === "home_loan" ? "homeLoan" : "otherLoans";
+  if (row.goal_id) return "goalMoney";
+  if (row.category === "property") return row.fire_treatment === "available" ? "investmentProperty" : row.fire_treatment === "later" ? "laterRetirement" : "home";
+  return row.fire_treatment === "available" ? "fireInvestments" : row.fire_treatment === "later" ? "laterRetirement" : "otherOutside";
+}
+
 export function getNetWorthBreakdown(rows: Row[]): NetWorthBreakdown {
-  const b = { fireInvestments: 0, investmentProperty: 0, goalMoney: 0, laterRetirement: 0, home: 0, otherOutside: 0, homeLoan: 0, otherLoans: 0 };
-  for (const row of rows) {
-    const value = Math.max(0, Number(row.current_value) || 0);
-    if (row.kind === "liability") {
-      if (row.category === "home_loan") b.homeLoan += value; else b.otherLoans += value;
-    } else if (row.goal_id) b.goalMoney += value;
-    else if (row.category === "property") {
-      if (row.fire_treatment === "available") b.investmentProperty += value;
-      else if (row.fire_treatment === "later") b.laterRetirement += value;
-      else b.home += value;
-    } else if (row.fire_treatment === "available") b.fireInvestments += value;
-    else if (row.fire_treatment === "later") b.laterRetirement += value;
-    else b.otherOutside += value;
-  }
+  const b: Record<Bucket, number> = { fireInvestments: 0, investmentProperty: 0, goalMoney: 0, laterRetirement: 0, home: 0, otherOutside: 0, homeLoan: 0, otherLoans: 0 };
+  for (const row of rows) b[bucketOf(row)] += Math.max(0, Number(row.current_value) || 0);
   const totalAssets = b.fireInvestments + b.investmentProperty + b.goalMoney + b.laterRetirement + b.home + b.otherOutside;
   const totalLiabilities = b.homeLoan + b.otherLoans;
   return { ...b, fireAccessible: b.fireInvestments + b.investmentProperty, totalAssets, totalLiabilities, netWorth: totalAssets - totalLiabilities, homeEquity: b.home - b.homeLoan };

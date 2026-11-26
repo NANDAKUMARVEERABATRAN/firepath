@@ -12,8 +12,8 @@ import { parseSpokenAmount } from "@/lib/voiceForms";
 import { amountInWords } from "@/lib/format";
 import { goalCategories } from "@/lib/goals";
 import { useCountry } from "@/lib/useCountry";
-import type { CountryCode } from "@/lib/country";
-import { getNetWorthBreakdown, propertyTreatment, propertyUseLabels, type FireTreatment, type PropertyUse } from "@/lib/netWorth";
+import { shortCountryMoney, type CountryCode } from "@/lib/country";
+import { bucketOf, getNetWorthBreakdown, propertyTreatment, type Bucket, propertyUseLabels, type FireTreatment, type PropertyUse } from "@/lib/netWorth";
 
 type Kind = "asset" | "liability";
 type Category = "cash" | "investment" | "property" | "vehicle" | "home_loan" | "vehicle_loan" | "education_loan" | "personal_loan" | "gold_loan" | "credit_card" | "other";
@@ -32,7 +32,8 @@ const portfolioPresets: Preset[] = [
   { id: "mf", emoji: "📊", label: "Mutual funds", kind: "asset", category: "investment", investment_type: "mutual_fund", fire: "available" },
   { id: "stocks", emoji: "📈", label: "Stocks", kind: "asset", category: "investment", investment_type: "stocks", fire: "available" },
   { id: "fd", emoji: "🏦", label: "Fixed deposit", kind: "asset", category: "investment", investment_type: "fixed_deposit", fire: "available" },
-  { id: "gold", emoji: "🪙", label: "Gold", kind: "asset", category: "investment", investment_type: "gold", fire: "available" },
+  { id: "gold", emoji: "🪙", label: "Investment gold (coins, bars, SGB, ETF)", kind: "asset", category: "investment", investment_type: "gold", fire: "available" },
+  { id: "jewellery", emoji: "💍", label: "Gold jewellery you’ll keep", kind: "asset", category: "other", fire: "excluded" },
   { id: "bonds", emoji: "📜", label: "Bonds", kind: "asset", category: "investment", investment_type: "bonds", fire: "available" },
   { id: "epf", emoji: "🏛️", label: "EPF / PF", kind: "asset", category: "investment", investment_type: "provident_fund", fire: "later", age: "58", only: "IN" },
   { id: "ppf", emoji: "🔐", label: "PPF", kind: "asset", category: "investment", investment_type: "ppf", fire: "later", only: "IN" },
@@ -203,16 +204,20 @@ export default function AccountsPage() {
     {!loading && !signedIn ? <section className="profile-card"><p>Sign in to manage your financial records.</p><Link href="/" className="button button-primary">Return home to sign in</Link></section> : loading ? <p className="profile-status">Loading financial records…</p> : <>
       <section className="account-totals portfolio-totals"><div><span>💼 Overall portfolio</span><small>Everything you own</small><strong>{money(effectiveAssets)}</strong></div><div className="fire-total"><span>🔥 FIRE portfolio</span><small>Counts toward financial freedom</small><strong>{money(effectiveFire)}</strong></div><div><span>🎯 Set aside for goals</span><small>House, kids, trips — not FIRE</small><strong>{money(breakdown.goalMoney)}</strong></div><div><span>Net worth</span><small>Everything you own minus loans</small><strong>{money(effectiveAssets - effectiveLiabilities)}</strong></div></section>
       <ImportHoldings existing={accounts as unknown as { id: string; name: string; current_value: number; external_id?: string | null; source?: string | null }[]} country={code} onImported={() => void load()} />
-      {accounts.length > 0 && <section className="networth-breakdown">
+      {accounts.length > 0 && (() => {
+        // Each group lists its own items, so it's always clear where something was counted.
+        const itemsIn = (bucket: Bucket) => { const list = accounts.filter(a => bucketOf(a) === bucket).sort((x, y) => y.current_value - x.current_value); return list.length ? <small className="nw-items">{list.slice(0, 4).map(a => `${a.name} ${shortCountryMoney(a.current_value, code)}`).join(" · ")}{list.length > 4 ? ` · +${list.length - 4} more` : ""}</small> : null; };
+        const profileLoans = liabilityCount === 0 ? profileTotals.liabilities : 0; // loans from the profile when none are itemised
+        return <section className="networth-breakdown">
         <h2>Where your net worth sits</h2>
         <div className="mix-bar">{[["fire", breakdown.fireInvestments], ["prop", breakdown.investmentProperty], ["goal", breakdown.goalMoney], ["later", breakdown.laterRetirement], ["home", breakdown.home], ["other", breakdown.otherOutside]].map(([key, value]) => <span key={key as string} className={`nw-${key}`} style={{ width: `${breakdown.totalAssets > 0 ? Number(value) / breakdown.totalAssets * 100 : 0}%` }} />)}</div>
         <div className="nw-rows">
-          <div className="nw-group"><b>Counts toward FIRE</b><span><i className="nw-fire" />Cash & investments<strong>{money(breakdown.fireInvestments)}</strong></span><span><i className="nw-prop" />Rented / investment property<strong>{money(breakdown.investmentProperty)}</strong></span></div>
-          <div className="nw-group"><b>Not in your FIRE portfolio</b><span><i className="nw-goal" />Set aside for goals<strong>{money(breakdown.goalMoney)}</strong></span><span><i className="nw-later" />EPF, PPF, NPS (later access)<strong>{money(breakdown.laterRetirement)}</strong></span><span><i className="nw-home" />Home you live in<strong>{money(breakdown.home)}</strong></span><span><i className="nw-other" />Vehicles & other<strong>{money(breakdown.otherOutside)}</strong></span></div>
-          <div className="nw-group"><b>Loans</b><span>Home loans<strong>−{money(breakdown.homeLoan)}</strong></span><span>Other loans<strong>−{money(breakdown.otherLoans)}</strong></span>{breakdown.home > 0 && <span>Equity in your home<strong>{money(breakdown.homeEquity)}</strong></span>}</div>
+          <div className="nw-group"><b>Counts toward FIRE</b><span><i className="nw-fire" />Cash & investments<strong>{money(breakdown.fireInvestments)}</strong></span>{itemsIn("fireInvestments")}<span><i className="nw-prop" />Rented / investment property<strong>{money(breakdown.investmentProperty)}</strong></span>{itemsIn("investmentProperty")}</div>
+          <div className="nw-group"><b>Not in your FIRE portfolio</b><span><i className="nw-goal" />Set aside for goals<strong>{money(breakdown.goalMoney)}</strong></span>{itemsIn("goalMoney")}<span><i className="nw-later" />EPF, PPF, NPS (later access)<strong>{money(breakdown.laterRetirement)}</strong></span>{itemsIn("laterRetirement")}<span><i className="nw-home" />Home you live in<strong>{money(breakdown.home)}</strong></span>{itemsIn("home")}<span><i className="nw-other" />Vehicles, jewellery & other<strong>{money(breakdown.otherOutside)}</strong></span>{itemsIn("otherOutside")}</div>
+          <div className="nw-group"><b>Loans</b><span>Home loans<strong>−{money(breakdown.homeLoan)}</strong></span>{itemsIn("homeLoan")}<span>Other loans<strong>−{money(breakdown.otherLoans)}</strong></span>{itemsIn("otherLoans")}{profileLoans > 0 && <><span>Loans from your profile<strong>−{money(profileLoans)}</strong></span><small className="nw-items">Not itemised yet. Add each loan above to see it here.</small></>}{breakdown.home > 0 && <span>Equity in your home<strong>{money(breakdown.homeEquity)}</strong></span>}</div>
         </div>
-        <p className="account-source-note">Net worth = {money(breakdown.totalAssets)} assets − {money(breakdown.totalLiabilities)} loans = <b>{money(breakdown.netWorth)}</b>. Your FIRE progress uses only the “Counts toward FIRE” group — goal money and your home are left out: <b>{money(breakdown.fireAccessible)}</b>.</p>
-      </section>}
+        <p className="account-source-note">Net worth = {money(breakdown.totalAssets)} assets − {money(breakdown.totalLiabilities + profileLoans)} loans = <b>{money(breakdown.netWorth - profileLoans)}</b>. Your FIRE progress uses only the “Counts toward FIRE” group — goal money and your home are left out: <b>{money(breakdown.fireAccessible)}</b>.</p>
+      </section>; })()}
       {!assetCount && !profileTotals.splitComplete && <p className="account-source-note">Your profile asset estimate has not been classified yet, so the FIRE-accessible figure temporarily uses the full estimate. Update the split in <Link href="/profile">your profile</Link>, or add itemized assets below.</p>}
       <p className="account-source-note">🔗 Items you add here replace the rough totals from your profile everywhere — score, FIRE plan and Home. Add each item once.</p>
       <form className="profile-card account-form" onSubmit={save} id="add-record">
