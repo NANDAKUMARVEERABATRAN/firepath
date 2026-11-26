@@ -35,6 +35,7 @@ export default function ThisMonthPage() {
   const [limits, setLimits] = useState<Partial<Record<MonthCategory, number>>>({});
   const [limitDraft, setLimitDraft] = useState<Partial<Record<MonthCategory, string>>>({});
   const [editLimits, setEditLimits] = useState(false);
+  const [limitsFrom, setLimitsFrom] = useState<string | null>(null); // month the shown limits were set in
   const [logged, setLogged] = useState(false);
   const [history, setHistory] = useState<{ month_start: string; invested: number }[]>([]);
   const [salaryColumns, setSalaryColumns] = useState(false);
@@ -82,6 +83,7 @@ export default function ThisMonthPage() {
       setEntries(list);
       // Limits: this month's, else carried over from the latest month that has them.
       const latest = (budgets.data ?? [])[0]?.month_start;
+      setLimitsFrom(latest ?? null);
       setLimits(Object.fromEntries((budgets.data ?? []).filter(b => b.month_start === latest && Number(b.target_amount) > 0).map(b => [b.category, Number(b.target_amount)])));
 
       const current = rows.find(r => r.month_start === m);
@@ -150,11 +152,6 @@ export default function ThisMonthPage() {
           if (op) { const { error } = await op; if (error) throw error; }
         }
       }
-      if (editLimits) {
-        const rows = MONTH_CATEGORIES.map(c => ({ user_id: userId, month_start: month, category: c.id, target_amount: n(limitDraft[c.id] ?? String(limits[c.id] ?? 0)), updated_at: new Date().toISOString() }));
-        const { error } = await supabase.from("monthly_budgets").upsert(rows, { onConflict: "user_id,month_start,category" });
-        if (error) throw error;
-      }
       const salaryChanged = n(form.salaryPf) + n(form.salaryPension) > 0;
       const { error } = await supabase.from("monthly_checkins").upsert({
         user_id: userId, month_start: month, income: n(form.takeHome), investment_income: Math.min(n(form.investmentIncome), n(form.takeHome)), expenses: spent, invested: n(form.invested), debt_paid: n(form.emis), note: form.note.trim().slice(0, 500), updated_at: new Date().toISOString(),
@@ -168,6 +165,18 @@ export default function ThisMonthPage() {
     } catch (e) { setMessage(e instanceof Error ? e.message : String((e as { message?: string })?.message ?? "Could not save.")); }
     finally { setSaving(false); }
   }
+
+  /** Limits are saved on their own (not with the month), from this month onwards; later months reuse them until changed. */
+  async function saveLimits() {
+    const supabase = createClient();
+    if (!supabase || !userId) return;
+    const next = Object.fromEntries(MONTH_CATEGORIES.map(c => [c.id, n(limitDraft[c.id] ?? String(limits[c.id] ?? 0))])) as Record<MonthCategory, number>;
+    const { error } = await supabase.from("monthly_budgets").upsert(MONTH_CATEGORIES.map(c => ({ user_id: userId, month_start: month, category: c.id, target_amount: next[c.id], updated_at: new Date().toISOString() })), { onConflict: "user_id,month_start,category" });
+    if (error) { setMessage(error.message); return; }
+    setLimits(Object.fromEntries(Object.entries(next).filter(([, v]) => v > 0)));
+    setLimitsFrom(month); setEditLimits(false); setLimitDraft({});
+  }
+  const draftAll = (fn: (c: MonthCategory) => number) => setLimitDraft(Object.fromEntries(MONTH_CATEGORIES.map(c => [c.id, String(Math.max(0, Math.round(fn(c.id) / 100) * 100))])));
 
   async function addEntry() {
     const supabase = createClient();
@@ -247,6 +256,16 @@ export default function ThisMonthPage() {
           {categoryTotal > 0 && Math.abs(categoryTotal - n(form.spentTotal)) > 1 && <p className="import-warning">Your categories add up to {money(categoryTotal)}. <button type="button" className="text-link tm-inline" onClick={() => setMode("category")}>Use categories instead</button></p>}
           <p className="tm-hint">Want to see where it goes? Switch to <b>By category</b>, or add spends with the one-line box above.</p>
         </> : <>
+          <div className="tm-limits-bar">
+            <p>{editLimits ? "Set a monthly limit for any category you want to watch. Leave blank for no limit. Limits apply from this month and carry forward until you change them." : Object.keys(limits).length ? <>Monthly limits {limitsFrom && limitsFrom !== month ? <>carried over from <b>{new Date(`${limitsFrom}T12:00:00`).toLocaleDateString("en-IN", { month: "long", year: "numeric" })}</b></> : "set for this month"}. Prices rise every year, so review them now and then.</> : "Optional: set monthly limits to see how much is left in each category."}</p>
+            {!editLimits && <button type="button" className="button button-secondary tm-edit-limits" onClick={() => { setEditLimits(true); setLimitDraft({}); }}>✏️ {Object.keys(limits).length ? "Edit limits" : "Set limits"}</button>}
+          </div>
+          {editLimits && <div className="tm-limit-tools">
+            <button type="button" onClick={() => draftAll(c => (limits[c] ?? 0) * 1.06)} disabled={!Object.keys(limits).length}>📈 +6% for inflation</button>
+            <button type="button" onClick={() => draftAll(c => shown(c))}>🧾 Use this month’s spending</button>
+            <button type="button" onClick={() => draftAll(() => 0)}>✕ Clear all</button>
+          </div>}
+          <div className="tm-cat tm-cat-headings" aria-hidden="true"><span>Category</span><span>Spent this month</span><span>{editLimits ? "Monthly limit" : "Limit"}</span></div>
           <div className="tm-cats">{MONTH_CATEGORIES.map(c => {
             const value = shown(c.id), limit = limits[c.id] ?? 0, sum = sums[c.id];
             const pct = limit > 0 ? Math.min(100, (value / limit) * 100) : 0;
@@ -254,11 +273,11 @@ export default function ThisMonthPage() {
               <span className="tm-cat-name">{c.emoji} {c.label}{sum.count > 0 && <small>{money(sum.fromEntries)} from {sum.count} entr{sum.count === 1 ? "y" : "ies"}</small>}</span>
               <div className="tm-amount small"><i>{country.symbol}</i><input type="number" inputMode="numeric" min={0} step="any" placeholder="0" value={typed[c.id] ?? (value ? String(value) : "")} onChange={e => setTyped(t => ({ ...t, [c.id]: e.target.value }))} aria-label={`${c.label} this month`} /></div>
               {editLimits ? <div className="tm-amount small limit"><i>max</i><input type="number" inputMode="numeric" min={0} step="any" placeholder="no limit" value={limitDraft[c.id] ?? (limits[c.id] ? String(limits[c.id]) : "")} onChange={e => setLimitDraft(d => ({ ...d, [c.id]: e.target.value }))} aria-label={`${c.label} monthly limit`} /></div>
-                : limit > 0 ? <div className={`tm-limit${value > limit ? " over" : ""}`}><span style={{ width: `${pct}%` }} /><small>{value > limit ? `${money(value - limit)} over` : `${money(limit - value)} left`} of {money(limit)}</small></div> : <span />}
+                : limit > 0 ? <button type="button" className={`tm-limit${value > limit ? " over" : ""}`} onClick={() => { setEditLimits(true); setLimitDraft({}); }} aria-label={`${c.label}: limit ${money(limit)}. Tap to change`}><span style={{ width: `${pct}%` }} /><small>{value > limit ? `${money(value - limit)} over` : `${money(limit - value)} left`} of {money(limit)} ✏️</small></button> : <button type="button" className="tm-add-limit" onClick={() => { setEditLimits(true); setLimitDraft({}); }}>+ limit</button>}
               {typed[c.id] !== undefined && n(typed[c.id]!) < sum.fromEntries && <small className="tm-warn">Your entries already add up to {money(sum.fromEntries)}.</small>}
             </div>;
           })}</div>
-          <div className="tm-cat-foot"><strong>Total spent: {money(categoryTotal)}</strong><button type="button" className="text-link tm-inline" onClick={() => { setEditLimits(v => !v); setLimitDraft({}); }}>{editLimits ? "Done with limits" : Object.keys(limits).length ? "Edit monthly limits" : "Set monthly limits (optional)"}</button></div>
+          <div className="tm-cat-foot"><strong>Total spent: {money(categoryTotal)}</strong>{editLimits && <span className="tm-limit-actions"><button type="button" className="text-link tm-inline" onClick={() => { setEditLimits(false); setLimitDraft({}); }}>Cancel</button><button type="button" className="button button-primary" onClick={() => void saveLimits()}>Save limits</button></span>}</div>
 
           <details className="tm-entries" open={individual.length > 0 && individual.length <= 6}>
             <summary>Individual spends ({individual.length})</summary>
