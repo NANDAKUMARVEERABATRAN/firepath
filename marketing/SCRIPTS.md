@@ -72,8 +72,8 @@ Videos 1–3 are also produced automatically as MP4s by the video maker in `mark
 
 ## 7. High income ≠ wealthy (*The Millionaire Next Door*)
 **Hook:** “Who gets rich first: the ₹3 lakh earner or the ₹1 lakh earner?”
-- “A earns ₹3 lakh, spends ₹2.8 lakh, invests ₹20,000. B earns ₹1 lakh, lives simply, invests ₹40,000.”
-- On screen after 10 years: A ≈ ₹46 lakh · B ≈ **₹92 lakh**
+- “Karan earns ₹3 lakh, spends ₹2.8 lakh, invests ₹20,000. Priya earns ₹1 lakh, lives simply, invests ₹40,000.”
+- On screen after 10 years: Karan ≈ ₹46 lakh · Priya ≈ **₹92 lakh**
 - “Wealth is what you *don’t* spend.” → CTA
 **Caption:** A big salary looks rich. A big savings rate *becomes* rich. #millionairenextdoor #wealth #savingsrate
 

@@ -6,6 +6,7 @@ import { Landmark, Pencil, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
+import ImportHoldings from "@/components/portfolio/ImportHoldings";
 import VoiceEntry from "@/components/forms/VoiceEntry";
 import { parseSpokenAmount } from "@/lib/voiceForms";
 import { amountInWords } from "@/lib/format";
@@ -66,7 +67,7 @@ export default function AccountsPage() {
   const [message, setMessage] = useState("");
   const [picked, setPicked] = useState(false);
   const [goals, setGoals] = useState<{ id: string; name: string; emoji: string; done: boolean }[]>([]);
-  const { country } = useCountry();
+  const { country, code } = useCountry();
   const goalName = (id?: string | null) => { const goal = goals.find(item => item.id === id); return goal ? `${goal.emoji} ${goal.name}` : null; };
 
   async function load() {
@@ -199,6 +200,7 @@ export default function AccountsPage() {
     <div className="profile-heading"><p className="eyebrow"><Landmark size={14} /> YOUR BALANCE SHEET</p><h1>Assets and loans.</h1><p>Track each item to make your net worth and debt score more useful. Enter amounts in {currency}.</p></div>
     {!loading && !signedIn ? <section className="profile-card"><p>Sign in to manage your financial records.</p><Link href="/" className="button button-primary">Return home to sign in</Link></section> : loading ? <p className="profile-status">Loading financial records…</p> : <>
       <section className="account-totals portfolio-totals"><div><span>💼 Overall portfolio</span><small>Everything you own</small><strong>{money(effectiveAssets)}</strong></div><div className="fire-total"><span>🔥 FIRE portfolio</span><small>Counts toward financial freedom</small><strong>{money(effectiveFire)}</strong></div><div><span>🎯 Set aside for goals</span><small>House, kids, trips — not FIRE</small><strong>{money(breakdown.goalMoney)}</strong></div><div><span>Net worth</span><small>Everything you own minus loans</small><strong>{money(effectiveAssets - effectiveLiabilities)}</strong></div></section>
+      <ImportHoldings existing={accounts as unknown as { id: string; name: string; current_value: number; external_id?: string | null; source?: string | null }[]} country={code} onImported={() => void load()} />
       {accounts.length > 0 && <section className="networth-breakdown">
         <h2>Where your net worth sits</h2>
         <div className="mix-bar">{[["fire", breakdown.fireInvestments], ["prop", breakdown.investmentProperty], ["goal", breakdown.goalMoney], ["later", breakdown.laterRetirement], ["home", breakdown.home], ["other", breakdown.otherOutside]].map(([key, value]) => <span key={key as string} className={`nw-${key}`} style={{ width: `${breakdown.totalAssets > 0 ? Number(value) / breakdown.totalAssets * 100 : 0}%` }} />)}</div>
