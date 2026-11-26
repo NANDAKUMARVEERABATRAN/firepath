@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Landmark, Pencil, Plus, Trash2 } from "lucide-react";
+import { Landmark, Pencil, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
@@ -107,7 +107,6 @@ export default function AccountsPage() {
   const effectiveAssets = assetCount ? totals.assets : profileTotals.assets;
   const effectiveLiabilities = liabilityCount ? totals.liabilities : profileTotals.liabilities;
   const effectiveFire = assetCount ? totals.fireAccessible : profileTotals.fireAccessible;
-  const effectiveLater = assetCount ? totals.laterRetirement : profileTotals.laterRetirement;
 
   function startEdit(account: Account) {
     setEditingId(account.id);
