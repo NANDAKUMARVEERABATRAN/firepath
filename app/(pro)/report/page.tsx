@@ -94,6 +94,7 @@ export default function ReportPage() {
       </section>}
 
       <ProgressHistory snapshots={state.snapshots} />
+      <a href="/trends" className="saver-strip tone-ok trends-link"><span className="saver-strip-emoji">📊</span><div><small>MONEY TRENDS</small><strong>See all your months and years</strong><span>Where each month’s money went, your savings rate over time and spending by category.</span></div></a>
 
       <section className="report-focus">
         <h3>Next month, focus on</h3>

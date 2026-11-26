@@ -128,6 +128,7 @@ npm run start
   - Months of freedom owned, estimated years/age to FIRE, and a "power move" showing how an extra monthly investment changes the date
   - Daily book lesson with an Indian example, quiz and micro-challenge (`lib/wisdom.ts`)
   - Goals snapshot, portfolio mix, and badges
+- **Money trends (`/trends`)** — where each month's money went (invested, EPF/NPS, spent, EMIs, left over), savings rate over time with saver-level reference lines, spending by budget category vs the previous period; months/all/yearly views, hover/tap details and a table view (`lib/trends.ts`)
 - **Goals (`/goals`)** — inflation-adjusted life goals with required monthly SIP, on-track status, quick top-ups and achievement celebrations (`lib/goals.ts`)
 - Responsive marketing homepage
 - Light design system and mobile navigation

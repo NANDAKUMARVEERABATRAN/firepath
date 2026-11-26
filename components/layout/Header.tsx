@@ -15,6 +15,7 @@ const primary = [
   { href: "/plan", label: "FIRE plan", icon: TrendingUp },
 ];
 const more = [
+  { href: "/trends", label: "📊 Money trends", hint: "Your spending, investing and savings rate over time" },
   { href: "/save-more", label: "✂️ Save more", hint: "Raise your savings rate, hunt spending leaks" },
   { href: "/report", label: "📬 Monthly report", hint: "Your month in money, and what to focus on next" },
   { href: "/check-in", label: "Monthly check-in", hint: "Log income, spending, investing" },

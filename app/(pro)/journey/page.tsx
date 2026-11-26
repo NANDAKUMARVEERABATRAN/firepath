@@ -254,6 +254,7 @@ export default function JourneyPage() {
       <p className="journey-note">Estimates use a {state?.plan.expected_return}% return and {state?.plan.inflation_rate}% inflation (real growth {((state?.plan.expected_return ?? 10) - (state?.plan.inflation_rate ?? 6)).toFixed(1)}%) in today’s money. Change them in your <Link href="/plan">FIRE plan</Link>. Illustrative only — not a guarantee or investment advice.</p>
 
       {state && <ProgressHistory snapshots={state.snapshots} />}
+      {state && state.checkins.length >= 2 && <a href="/trends" className="saver-strip tone-ok trends-link"><span className="saver-strip-emoji">📊</span><div><small>MONEY TRENDS</small><strong>See where your money went, month after month</strong><span>Savings rate, spending vs investing, and your best months.</span></div></a>}
 
       {state && <StepUpPlan userId={state.userId} age={game.profile.age} accessible={Math.max(0, game.profile.investableAssets ?? game.profile.assets)} monthlyInvestment={game.profile.monthly_investment} target={game.metrics.fireTarget} plan={state.plan} money={money} onSaved={(percent, month) => setState(current => current ? { ...current, plan: { ...current.plan, step_up_percent: percent, step_up_month: month } } : current)} />}
 
