@@ -6,11 +6,14 @@ import { Target } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
+import { inFutureMoney, inTodayMoney } from "@/lib/inflation";
 import { projectBreakdown, projectRetirementAssets, sumLaterAssets, type LaterAssetLot } from "@/lib/retirementProjection";
 
 type Currency = "INR" | "AED" | "USD";
-type Inputs = { age: number; retirementAge: number; monthlyExpenses: number; assets: number; monthlyInvestment: number; monthlyInvestmentIncome: number; inflation: number; expectedReturn: number; withdrawal: number };
-const initial: Inputs = { age: 30, retirementAge: 60, monthlyExpenses: 0, assets: 0, monthlyInvestment: 0, monthlyInvestmentIncome: 0, inflation: 6, expectedReturn: 8, withdrawal: 3.5 };
+/** Lifestyle the FIRE target is built on, compared with today's spending. */
+const fireLifestyle = (ratio: number) => ratio < 0.85 ? "🌿 Lean FIRE" : ratio > 1.25 ? "🥂 Fat FIRE" : "🙂 Regular FIRE";
+type Inputs = { age: number; retirementAge: number; monthlyExpenses: number; retirementExpenses: number | null; assets: number; monthlyInvestment: number; monthlyInvestmentIncome: number; inflation: number; expectedReturn: number; withdrawal: number };
+const initial: Inputs = { age: 30, retirementAge: 60, monthlyExpenses: 0, retirementExpenses: null, assets: 0, monthlyInvestment: 0, monthlyInvestmentIncome: 0, inflation: 6, expectedReturn: 8, withdrawal: 3.5 };
 
 export default function PlanPage() {
   const [inputs, setInputs] = useState(initial);
@@ -24,6 +27,7 @@ export default function PlanPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [planColumns, setPlanColumns] = useState(false); // retirement_expenses column exists (migration 0028)
 
   useEffect(() => {
     const supabase = createClient();
@@ -38,10 +42,11 @@ export default function PlanPage() {
         setSignedIn(true);
         const [profileResult, planResult, accountsResult] = await Promise.all([
           supabase.from("financial_profiles").select("age, monthly_expenses, assets, fire_accessible_assets, later_retirement_assets, monthly_investment, monthly_investment_income, currency").eq("user_id", session.user.id).maybeSingle(),
-          supabase.from("fire_plans").select("retirement_age, inflation_rate, expected_return, withdrawal_rate, investment_income_treatment, monthly_investment_income").eq("user_id", session.user.id).maybeSingle(),
+          supabase.from("fire_plans").select("*").eq("user_id", session.user.id).maybeSingle(),
           supabase.from("financial_accounts").select("*").eq("user_id", session.user.id),
         ]);
         if (!active) return;
+        setPlanColumns(Boolean(planResult.data && "retirement_expenses" in planResult.data));
         if (profileResult.error) setMessage(`Could not load your profile. Details: ${profileResult.error.message}`);
         const profile = profileResult.data;
         if (profile) {
@@ -64,6 +69,7 @@ export default function PlanPage() {
             age: profile.age ?? current.age,
             retirementAge: Math.max(profile.age ?? current.age, planResult.data?.retirement_age ?? current.retirementAge),
             monthlyExpenses: Number(profile.monthly_expenses),
+            retirementExpenses: planResult.data?.retirement_expenses == null ? null : Number(planResult.data.retirement_expenses),
             assets: assetsList.length ? investableList.reduce((total, row) => total + Number(row.current_value), 0) : profile.fire_accessible_assets === null ? Number(profile.assets) : Number(profile.fire_accessible_assets),
             monthlyInvestment: Number(profile.monthly_investment),
             monthlyInvestmentIncome: Number(planResult.data?.monthly_investment_income ?? profile.monthly_investment_income ?? 0),
@@ -84,7 +90,9 @@ export default function PlanPage() {
     const payoutYield = inputs.assets > 0 ? inputs.monthlyInvestmentIncome * 12 / inputs.assets * 100 : 0;
     const projectedAnnualGrowth = investmentIncomeTreatment === "cash" ? Math.max(-95, inputs.expectedReturn - payoutYield) : inputs.expectedReturn;
     const projectAtYear = (year: number) => projectRetirementAssets({ age: inputs.age, year, accessibleAssets: inputs.assets, monthlyContribution: inputs.monthlyInvestment, annualGrowthPercent: projectedAnnualGrowth, laterAssets: laterLots });
-    const expenseAtYear = (year: number) => inputs.monthlyExpenses * Math.pow(1 + inputs.inflation / 100, year);
+    // The target is built on planned retirement spending if set, else today's spending (both in today's money).
+    const baseExpenses = inputs.retirementExpenses ?? inputs.monthlyExpenses;
+    const expenseAtYear = (year: number) => inFutureMoney(baseExpenses, inputs.inflation, year);
     const expenseAtRetirement = expenseAtYear(years);
     const target = inputs.withdrawal > 0 ? expenseAtRetirement * 12 / (inputs.withdrawal / 100) : 0;
     const projected = projectAtYear(years);
@@ -94,7 +102,7 @@ export default function PlanPage() {
     const chartX = (year: number) => 30 + (years ? year / years : 0) * 580;
     const chartY = (value: number) => 178 - value / maxValue * 150;
     return {
-      years, expenseAtRetirement, target, projected, gap: projected - target, payoutYield, projectedAnnualGrowth,
+      years, expenseAtRetirement, target, baseExpenses, targetToday: inTodayMoney(target, inputs.inflation, years), projected, gap: projected - target, payoutYield, projectedAnnualGrowth,
       parts: projectBreakdown({ age: inputs.age, year: years, accessibleAssets: inputs.assets, monthlyContribution: inputs.monthlyInvestment, annualGrowthPercent: projectedAnnualGrowth, laterAssets: laterLots }),
       wealthPoints: series.map(point => `${chartX(point.year)},${chartY(point.wealth)}`).join(" "),
       targetPoints: series.map(point => `${chartX(point.year)},${chartY(point.target)}`).join(" "),
@@ -112,8 +120,8 @@ export default function PlanPage() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) { setSignedIn(false); throw new Error("Sign in to save your assumptions."); }
-      const { error } = await supabase.from("fire_plans").upsert({ user_id: session.user.id, retirement_age: inputs.retirementAge, inflation_rate: inputs.inflation, expected_return: inputs.expectedReturn, withdrawal_rate: inputs.withdrawal, investment_income_treatment: investmentIncomeTreatment, monthly_investment_income: inputs.monthlyInvestmentIncome, updated_at: new Date().toISOString() });
-      if (error) throw error;
+      const { error } = await supabase.from("fire_plans").upsert({ user_id: session.user.id, retirement_age: inputs.retirementAge, ...(planColumns || inputs.retirementExpenses !== null ? { retirement_expenses: inputs.retirementExpenses } : {}), inflation_rate: inputs.inflation, expected_return: inputs.expectedReturn, withdrawal_rate: inputs.withdrawal, investment_income_treatment: investmentIncomeTreatment, monthly_investment_income: inputs.monthlyInvestmentIncome, updated_at: new Date().toISOString() });
+      if (error) throw /retirement_expenses/.test(error.message) ? new Error("Run supabase/migrations/202611260028_retirement_expenses.sql in Supabase to save expenses after you stop working.") : error;
       setMessage("FIRE assumptions saved to your account.");
     } catch (error) { setMessage(error instanceof Error ? error.message : "Could not save your plan."); }
     finally { setSaving(false); }
@@ -134,6 +142,9 @@ export default function PlanPage() {
           {!inputs.monthlyExpenses && <p className="account-source-note">Your profile has no monthly expenses yet. <Link href="/profile">Answer a few questions</Link> to see your plan.</p>}
           <p className="linked-intro">🔗 These come from your profile and portfolio — no need to type them again.</p>
           <div className="plan-result-line linked"><span>Monthly expenses</span><b>{money(inputs.monthlyExpenses)}</b><Link href="/profile">Edit</Link></div>
+          <div className="retire-spend"><label><span>Monthly expenses after you stop working <small>(today’s money, optional)</small></span><input type="number" min="0" step="any" inputMode="numeric" placeholder={`Same as now: ${money(inputs.monthlyExpenses)}`} value={inputs.retirementExpenses ?? ""} onChange={event => setInputs(current => ({ ...current, retirementExpenses: event.target.value === "" ? null : Math.max(0, Number(event.target.value)) }))} /></label>
+            <div className="qn-chips">{[["🌿 Lean · 30% less", 0.7], ["🙂 Regular · same as now", null], ["🥂 Fat · 50% more", 1.5], ["💎 Fat · 2× today", 2]].map(([label, factor]) => <button key={label as string} type="button" className={(factor === null ? inputs.retirementExpenses === null : inputs.retirementExpenses === Math.round(inputs.monthlyExpenses * (factor as number))) ? "selected" : ""} onClick={() => setInputs(current => ({ ...current, retirementExpenses: factor === null ? null : Math.round(current.monthlyExpenses * (factor as number)) }))}>{label as string}</button>)}</div>
+            <small>Your target lifestyle: <b>{fireLifestyle(inputs.retirementExpenses === null ? 1 : inputs.monthlyExpenses > 0 ? inputs.retirementExpenses / inputs.monthlyExpenses : 1)}</b>. Lean = simpler life; Fat = more travel, comfort and buffer. Home-loan EMIs and school fees often end by then; healthcare usually grows. Your FIRE target everywhere in the app uses this.</small></div>
           <div className="plan-result-line linked"><span>FIRE-accessible assets</span><b>{money(inputs.assets)}</b><Link href="/accounts">Edit</Link></div>
           <div className="plan-result-line linked"><span>Monthly investing</span><b>{money(inputs.monthlyInvestment)}</b><Link href="/profile">Edit</Link></div>
           <div className="plan-result-line"><span>Later-access retirement assets</span><b>{money(laterAssets)}</b></div>
@@ -147,7 +158,7 @@ export default function PlanPage() {
           <button className="button button-primary" type="submit" disabled={saving}>{saving ? "Saving…" : "Save assumptions"}</button>
           {message && <p className="profile-status" role="status">{message}</p>}
         </section>
-        <section className="plan-results"><p className="result-kicker">ILLUSTRATIVE FIRE TARGET</p><strong className="plan-target">{money(result.target)}</strong><p>Money needed at age {inputs.retirementAge} to cover your expenses forever at a {inputs.withdrawal}% yearly withdrawal.</p>{inputs.withdrawal > 5 && <p className="plan-warn">⚠️ A {inputs.withdrawal}% withdrawal rate makes the target look small but risks running out of money. Most FIRE plans use 3–4% (India often 3–3.5% because of higher inflation). At 3.5% your target would be {money(result.expenseAtRetirement * 12 / 0.035)}.</p>}<div className="plan-result-line"><span>Expenses per month then</span><b>{money(result.expenseAtRetirement)}</b></div><p className="plan-math">{money(inputs.monthlyExpenses)} today grows with {inputs.inflation}% inflation for {result.years} year{result.years === 1 ? "" : "s"} → {money(result.expenseAtRetirement)}/month. Target = {money(result.expenseAtRetirement)} × 12 ÷ {inputs.withdrawal}% = {money(result.target)}.</p><div className="plan-result-line"><span>Projected wealth at target age</span><b>{money(result.projected)}</b></div><ul className="plan-breakdown"><li><span>Today’s {money(inputs.assets)} growing at {result.projectedAnnualGrowth.toFixed(1)}%</span><b>{money(result.parts.grown)}</b></li><li><span>Investing {money(inputs.monthlyInvestment)}/month ({money(result.parts.contributed)} put in)</span><b>{money(result.parts.contributions)}</b></li>{result.parts.unlocked > 0 && <li><span>Later-access funds (EPF/PPF/NPS…) unlocked by age {inputs.retirementAge}</span><b>{money(result.parts.unlocked)}</b></li>}</ul><div className="plan-result-line"><span>Estimated target age</span><b>{result.crossingAge ? `Around age ${result.crossingAge}` : "Not reached in this scenario"}</b></div><div className={`plan-gap ${result.gap >= 0 ? "positive" : "negative"}`}><span>{result.gap >= 0 ? "Illustrative surplus" : "Illustrative gap"}</span><strong>{money(Math.abs(result.gap))}</strong></div><div className="plan-chart-wrap"><div className="plan-chart-heading"><b>Illustrative path</b><span>wealth vs FIRE target</span></div><svg className="plan-chart" viewBox="0 0 640 205" role="img" aria-labelledby="plan-chart-title plan-chart-description"><title id="plan-chart-title">Projected wealth compared with FIRE target</title><desc id="plan-chart-description">A projection based on your current investments, monthly contributions, return and inflation assumptions.</desc><line x1="30" y1="178" x2="610" y2="178" className="plan-chart-axis"/><polyline points={result.targetPoints} className="plan-chart-target"/><polyline points={result.wealthPoints} className="plan-chart-wealth"/><text x="30" y="198" className="plan-chart-label">{inputs.age}</text><text x="610" y="198" textAnchor="end" className="plan-chart-label">{inputs.retirementAge}</text></svg><div className="plan-chart-legend"><span><i className="wealth-key" />Projected wealth</span><span><i className="target-key" />FIRE target</span></div></div><p className="plan-result-note">This is a simplified scenario tool, not a promise or a recommendation. Change one assumption at a time to see how the estimate moves.</p></section>
+        <section className="plan-results"><p className="result-kicker">ILLUSTRATIVE FIRE TARGET</p><strong className="plan-target">{money(result.target)}</strong><p className="plan-today">= <b>{money(result.targetToday)}</b> in today’s money · {fireLifestyle(inputs.retirementExpenses === null || inputs.monthlyExpenses <= 0 ? 1 : inputs.retirementExpenses / inputs.monthlyExpenses)}</p><p>Money needed at age {inputs.retirementAge} to cover your expenses forever at a {inputs.withdrawal}% yearly withdrawal.</p>{inputs.withdrawal > 5 && <p className="plan-warn">⚠️ A {inputs.withdrawal}% withdrawal rate makes the target look small but risks running out of money. Most FIRE plans use 3–4% (India often 3–3.5% because of higher inflation). At 3.5% your target would be {money(result.expenseAtRetirement * 12 / 0.035)}.</p>}<div className="plan-result-line"><span>Expenses per month then</span><b>{money(result.expenseAtRetirement)}</b></div><p className="plan-math">{money(result.baseExpenses)}{inputs.retirementExpenses !== null ? " planned spending" : " today"} grows with {inputs.inflation}% inflation for {result.years} year{result.years === 1 ? "" : "s"} → {money(result.expenseAtRetirement)}/month. Target = {money(result.expenseAtRetirement)} × 12 ÷ {inputs.withdrawal}% = {money(result.target)}.</p><div className="plan-result-line"><span>Projected wealth at target age</span><b>{money(result.projected)}</b></div><ul className="plan-breakdown"><li><span>Today’s {money(inputs.assets)} growing at {result.projectedAnnualGrowth.toFixed(1)}%</span><b>{money(result.parts.grown)}</b></li><li><span>Investing {money(inputs.monthlyInvestment)}/month ({money(result.parts.contributed)} put in)</span><b>{money(result.parts.contributions)}</b></li>{result.parts.unlocked > 0 && <li><span>Later-access funds (EPF/PPF/NPS…) unlocked by age {inputs.retirementAge}</span><b>{money(result.parts.unlocked)}</b></li>}</ul><div className="plan-result-line"><span>Estimated target age</span><b>{result.crossingAge ? `Around age ${result.crossingAge}` : "Not reached in this scenario"}</b></div><div className={`plan-gap ${result.gap >= 0 ? "positive" : "negative"}`}><span>{result.gap >= 0 ? "Illustrative surplus" : "Illustrative gap"}</span><strong>{money(Math.abs(result.gap))}</strong></div><div className="plan-chart-wrap"><div className="plan-chart-heading"><b>Illustrative path</b><span>wealth vs FIRE target</span></div><svg className="plan-chart" viewBox="0 0 640 205" role="img" aria-labelledby="plan-chart-title plan-chart-description"><title id="plan-chart-title">Projected wealth compared with FIRE target</title><desc id="plan-chart-description">A projection based on your current investments, monthly contributions, return and inflation assumptions.</desc><line x1="30" y1="178" x2="610" y2="178" className="plan-chart-axis"/><polyline points={result.targetPoints} className="plan-chart-target"/><polyline points={result.wealthPoints} className="plan-chart-wealth"/><text x="30" y="198" className="plan-chart-label">{inputs.age}</text><text x="610" y="198" textAnchor="end" className="plan-chart-label">{inputs.retirementAge}</text></svg><div className="plan-chart-legend"><span><i className="wealth-key" />Projected wealth</span><span><i className="target-key" />FIRE target</span></div></div><p className="plan-result-note">This is a simplified scenario tool, not a promise or a recommendation. Change one assumption at a time to see how the estimate moves.</p></section>
       </form>
     </>}
   </main><Footer /></>;

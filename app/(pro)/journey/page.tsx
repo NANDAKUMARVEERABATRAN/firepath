@@ -21,6 +21,7 @@ import { getCurrentLevel, getFreedomMetrics, getFreedomPath, getMotivation, getR
 import { analyzeGoal, goalCategories, statusLabel } from "@/lib/goals";
 import { getLessonOfDay, lessons as allLessons } from "@/lib/wisdom";
 import { fireStyles, getWhyResult, styleTip } from "@/lib/fireWhy";
+import { inFutureMoney } from "@/lib/inflation";
 import { cutNeededForRate, getNextTier, getSavingsTier, savingsRate } from "@/lib/savingsCoach";
 
 const greeting = () => { const hour = new Date().getHours(); return hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening"; };
@@ -246,7 +247,7 @@ export default function JourneyPage() {
 
       <section className="freedom-metrics">
         <article><span>Months of freedom you own</span><strong>{game.metrics.freedomMonths.toFixed(1)}</strong><small>Your FIRE-accessible money ÷ monthly expenses</small></article>
-        <article><span>FIRE progress</span><strong>{game.metrics.fireProgress.toFixed(1)}%</strong><small>of {money(game.metrics.fireTarget)} target ({state?.plan.withdrawal_rate}% withdrawal)</small><div className="score-track"><span style={{ width: `${game.metrics.fireProgress}%` }} /></div></article>
+        <article><span>FIRE progress</span><strong>{game.metrics.fireProgress.toFixed(1)}%</strong><small>of {money(game.metrics.fireTarget)} target in today’s money{(() => { const atAge = game.metrics.fireAge ?? state?.plan.retirement_age ?? null; const years = atAge && game.profile.age ? atAge - game.profile.age : 0; return years > 0 ? ` ≈ ${money(inFutureMoney(game.metrics.fireTarget, state?.plan.inflation_rate ?? 6, years))} by age ${atAge}` : ""; })()}{state?.plan.retirement_expenses ? " · based on your retirement spending" : ""}</small><div className="score-track"><span style={{ width: `${game.metrics.fireProgress}%` }} /></div></article>
         <article><span>Estimated freedom</span><strong>{game.metrics.yearsToFire === null ? "60+ yrs" : game.metrics.yearsToFire === 0 ? "Now!" : `${game.metrics.yearsToFire.toFixed(1)} yrs`}</strong><small>{game.metrics.fireAge ? `Around age ${game.metrics.fireAge} at today’s pace` : "Increase monthly investing to set a date"}</small></article>
         <article className="boost"><span>Your power move</span><strong>+{money(game.metrics.boostAmount)}/mo</strong><small>{game.metrics.yearsSavedByBoost !== null && game.metrics.yearsSavedByBoost > 0 ? `could bring freedom ~${game.metrics.yearsSavedByBoost.toFixed(1)} years sooner` : "invested monthly could start your FIRE clock"}</small></article>
       </section>

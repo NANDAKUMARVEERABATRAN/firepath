@@ -95,7 +95,7 @@ export default function FireCalculator() {
           <div className="calculator-results">
             <span className="result-kicker">YOUR ESTIMATED FIRE TARGET</span>
             <div className="result-number">{money(result.targetCorpus)}</div>
-            <p>Estimated corpus required at age {retireAge}, based on your inputs.</p>
+            <p>Estimated corpus required at age {retireAge}, including {inflation}% inflation. That’s <b>{money(result.targetCorpus / Math.pow(1 + inflation / 100, result.years))}</b> in today’s money.</p>
             <div className="result-divider"/>
             <div className="result-row"><span>Monthly expenses at retirement</span><b>{money(result.futureMonthlyExpenses)}</b></div>
             <div className="result-row"><span>Projected wealth at target age</span><b>{money(result.projected)}</b></div>

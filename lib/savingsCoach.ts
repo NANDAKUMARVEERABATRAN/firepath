@@ -54,7 +54,7 @@ export function idleMoney(income: number, expenses: number, invested: number): n
 
 /* ---------------- Impact of cutting spending ---------------- */
 
-export type CutImpactInput = { accessible: number; monthlyInvestment: number; monthlyExpenses: number; monthlyCut: number; realReturnPercent: number; withdrawalRatePercent: number };
+export type CutImpactInput = { accessible: number; monthlyInvestment: number; monthlyExpenses: number; monthlyCut: number; realReturnPercent: number; withdrawalRatePercent: number; /** Spending the FIRE target is based on, if different (planned retirement spending). */ targetMonthlyExpenses?: number };
 export type CutImpact = { monthlyCut: number; yearlyCut: number; targetBefore: number; targetAfter: number; targetDrop: number; yearsBefore: number | null; yearsAfter: number | null; yearsSooner: number | null; valueIn10Years: number };
 
 /**
@@ -64,8 +64,9 @@ export type CutImpact = { monthlyCut: number; yearlyCut: number; targetBefore: n
 export function cutImpact(input: CutImpactInput): CutImpact {
   const cut = Math.max(0, Math.min(input.monthlyCut, input.monthlyExpenses));
   const wr = input.withdrawalRatePercent / 100;
-  const targetBefore = wr > 0 ? (Math.max(0, input.monthlyExpenses) * 12) / wr : 0;
-  const targetAfter = wr > 0 ? (Math.max(0, input.monthlyExpenses - cut) * 12) / wr : 0;
+  const targetBase = input.targetMonthlyExpenses ?? input.monthlyExpenses;
+  const targetBefore = wr > 0 ? (Math.max(0, targetBase) * 12) / wr : 0;
+  const targetAfter = wr > 0 ? (Math.max(0, targetBase - cut) * 12) / wr : 0;
   const yearsBefore = yearsToTarget(input.accessible, input.monthlyInvestment, targetBefore, input.realReturnPercent);
   const yearsAfter = yearsToTarget(input.accessible, input.monthlyInvestment + cut, targetAfter, input.realReturnPercent);
   const monthlyRate = Math.pow(1 + input.realReturnPercent / 100, 1 / 12) - 1;

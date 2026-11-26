@@ -8,7 +8,7 @@ import Footer from "@/components/layout/Footer";
 import Celebration from "@/components/game/Celebration";
 import { createClient } from "@/lib/supabase/client";
 import { loadFinancialState, type CutPlan, type FinancialState } from "@/lib/financialState";
-import { totalIncome } from "@/lib/fireScore";
+import { targetExpenses, totalIncome } from "@/lib/fireScore";
 import { countryFromCurrency, formatCountryMoney } from "@/lib/country";
 import { cutImpact, cutNeededForRate, findOverspending, getLeaks, getNextTier, getSavingsTier, idleMoney, savingsRate, savingsRateTable, SAVINGS_TIERS } from "@/lib/savingsCoach";
 
@@ -73,7 +73,8 @@ export default function SaveMorePage() {
     const withdrawal = state.plan.withdrawal_rate;
     const accessible = Math.max(0, base.investableAssets ?? base.assets);
     // Idle money is measured in the bank: take-home minus spending minus bank investments.
-    return { income, fromSalary, expenses, invested, rate, realReturn, withdrawal, accessible, idle: idleMoney(flow.monthly_income, expenses, invested) };
+    const targetMonthly = flow.retirement_expenses ? targetExpenses(flow) : undefined; // planned retirement spending, if set
+    return { income, fromSalary, targetMonthly, expenses, invested, rate, realReturn, withdrawal, accessible, idle: idleMoney(flow.monthly_income, expenses, invested) };
   }, [state]);
 
   const pickedTotal = Object.values(picked).reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
@@ -106,7 +107,7 @@ export default function SaveMorePage() {
     const { error } = await supabase.from("financial_profiles").update(patch).eq("user_id", state.userId);
     setSaving(false);
     if (error) { setMessage(error.message.includes("cut_plan") ? "Run supabase/migrations/202611260024_savings_pledge.sql in Supabase first." : error.message); return; }
-    const impact = cutImpact({ accessible: numbers.accessible, monthlyInvestment: numbers.invested, monthlyExpenses: numbers.expenses, monthlyCut: pickedTotal, realReturnPercent: numbers.realReturn, withdrawalRatePercent: numbers.withdrawal });
+    const impact = cutImpact({ accessible: numbers.accessible, monthlyInvestment: numbers.invested, monthlyExpenses: numbers.expenses, monthlyCut: pickedTotal, realReturnPercent: numbers.realReturn, withdrawalRatePercent: numbers.withdrawal, targetMonthlyExpenses: numbers.targetMonthly });
     const newLeaks = Math.max(0, Object.keys(items).length - Object.keys(committed?.items ?? {}).length);
     setCelebrate(Object.keys(items).length ? {
       title: `Leak Hunter! 🎯 ${money(pickedTotal)}/month found`,
@@ -140,7 +141,7 @@ export default function SaveMorePage() {
   const baseRate = numbers ? savingsRate(numbers.income, baseExpenses) : null;
   const newRate = numbers ? savingsRate(numbers.income, baseExpenses - pickedTotal) : null;
   const previewTier = newRate !== null ? getSavingsTier(newRate) : null;
-  const impact = numbers ? cutImpact({ accessible: numbers.accessible, monthlyInvestment: baseInvested, monthlyExpenses: baseExpenses, monthlyCut: pickedTotal, realReturnPercent: numbers.realReturn, withdrawalRatePercent: numbers.withdrawal }) : null;
+  const impact = numbers ? cutImpact({ accessible: numbers.accessible, monthlyInvestment: baseInvested, monthlyExpenses: baseExpenses, monthlyCut: pickedTotal, realReturnPercent: numbers.realReturn, withdrawalRatePercent: numbers.withdrawal, targetMonthlyExpenses: numbers.targetMonthly }) : null;
   const table = numbers ? savingsRateTable(numbers.realReturn, numbers.withdrawal) : [];
   const maxYears = Math.max(...table.map(row => row.years ?? 0), 1);
   const overspending = numbers ? findOverspending(spent, numbers.income) : [];

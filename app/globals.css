@@ -522,3 +522,12 @@
 .plan-breakdown li{display:flex;justify-content:space-between;gap:10px;font-size:11px;color:#a8b8c2;padding:4px 0}
 .plan-breakdown b{color:#dfe7ee;white-space:nowrap}
 .plan-warn{font-size:12px!important;color:#ffe08a!important;background:#ffc94d1f;border:1px solid #ffc94d55;border-radius:10px;padding:8px 10px;margin:6px 0}
+
+/* FIRE plan: target in today's money + retirement spending */
+.plan-today{font-size:13px!important;color:#c2ced4!important;margin:2px 0 8px}.plan-today b{color:#fff}
+.retire-spend{display:flex;flex-direction:column;gap:8px;padding:12px 0 14px;border-top:1px solid var(--line)}
+.retire-spend label{display:flex;flex-direction:column;gap:6px}
+.retire-spend label>span{font-size:13px;color:var(--navy);font-weight:700}.retire-spend label small{font-weight:400;color:#8896a3}
+.retire-spend input{border:1px solid #dce5e8;border-radius:10px;padding:10px 12px;font-size:15px}
+.retire-spend>small{font-size:12px;color:#8896a3;line-height:1.5}
+.retire-spend .qn-chips button{font-size:12px;padding:6px 11px}

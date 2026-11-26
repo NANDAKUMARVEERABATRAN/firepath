@@ -77,3 +77,12 @@ test("daily lessons are valid and skip completed ones", () => {
   assert.notEqual(getLessonOfDay(day, [first.id]).id, first.id);
   assert.ok(getLessonOfDay(day, lessons.map(lesson => lesson.id)));
 });
+
+import { getFreedomPath as pathFor } from "../lib/freedomPath.ts";
+test("Coast FIRE is listed after Halfway when the Coast number is more than half the target", () => {
+  const p = { age: 50, monthly_income: 200000, monthly_expenses: 50000, assets: 0, investableAssets: 0, liabilities: 0, emergency_fund: 0, monthly_investment: 0, has_health_insurance: false, has_term_insurance: false, currency: "INR", withdrawal_rate: 3.5 };
+  const ids = pathFor(p, { retirementAge: 60, expectedReturn: 10, inflation: 6 }).map(l => l.id);
+  assert.ok(ids.indexOf("halfway") < ids.indexOf("coast")); // 10 years at 4% → Coast ≈ 68% of target
+  const young = pathFor({ ...p, age: 25 }, { retirementAge: 60, expectedReturn: 10, inflation: 6 }).map(l => l.id);
+  assert.ok(young.indexOf("coast") < young.indexOf("halfway")); // 35 years → Coast ≈ 25%
+});

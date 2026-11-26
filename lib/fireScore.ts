@@ -24,7 +24,12 @@ export type FinancialProfile = {
   highInterestDebt?: number;
   detailedDebtData?: boolean;
   withdrawal_rate?: number;
+  /** Optional monthly spending after you stop working (today's money); the FIRE target uses it when set. */
+  retirement_expenses?: number | null;
 };
+
+/** Monthly spending the FIRE target is built on: planned retirement spending if set, else today's spending. */
+export const targetExpenses = (profile: Pick<FinancialProfile, "monthly_expenses" | "retirement_expenses">) => Math.max(0, profile.retirement_expenses != null && profile.retirement_expenses > 0 ? profile.retirement_expenses : profile.monthly_expenses);
 
 export type ScoreCategory = { name: string; score: number; max: number; explanation: string };
 
@@ -43,7 +48,7 @@ export function getFireScore(profile: FinancialProfile): { score: number; catego
   const netWorth = profile.assets - profile.liabilities;
   const fireAssets = Math.max(0, profile.investableAssets ?? profile.fire_accessible_assets ?? profile.assets);
   const withdrawalRate = (profile.withdrawal_rate ?? 3.5) / 100;
-  const fireTarget = expenses > 0 && withdrawalRate > 0 ? (expenses * 12) / withdrawalRate : 0;
+  const fireTarget = targetExpenses(profile) > 0 && withdrawalRate > 0 ? (targetExpenses(profile) * 12) / withdrawalRate : 0;
   const fireProgress = fireTarget > 0 ? clamp((fireAssets / fireTarget) * 100, 100) : 0;
   const debtServiceRate = income > 0 ? (profile.monthlyDebtPayments ?? 0) / income : 0;
   const highInterestDebtRatio = income > 0 ? (profile.highInterestDebt ?? 0) / (income * 12) : 0;
@@ -126,7 +131,7 @@ export function getBadges(profile: FinancialProfile, investmentStreak = 0): Badg
   const savingsRate = income > 0 ? ((income - profile.monthly_expenses) / income) * 100 : 0;
   const emergencyMonths = profile.monthly_expenses > 0 ? profile.emergency_fund / profile.monthly_expenses : 0;
   const withdrawalRate = (profile.withdrawal_rate ?? 3.5) / 100;
-  const target = profile.monthly_expenses > 0 && withdrawalRate > 0 ? (profile.monthly_expenses * 12) / withdrawalRate : 0;
+  const target = targetExpenses(profile) > 0 && withdrawalRate > 0 ? (targetExpenses(profile) * 12) / withdrawalRate : 0;
   const progress = target > 0 ? Math.max(0, (profile.investableAssets ?? profile.fire_accessible_assets ?? profile.assets) / target) * 100 : 0;
   return [
     { name: "Money Map Maker", description: "Complete your financial profile.", earned: Boolean(profile.age && profile.monthly_income > 0 && profile.monthly_expenses > 0) },

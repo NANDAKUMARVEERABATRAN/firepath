@@ -6,7 +6,7 @@ import { countryFromCurrency, getCountry, readStoredCountry, storeCountry } from
 
 export type AccountRow = { id: string; name: string; kind: "asset" | "liability"; category: string; investment_type: string | null; current_value: number; monthly_payment: number; is_high_interest: boolean; fire_treatment: string; property_use?: "self_occupied" | "rented" | "investment" | null; goal_id?: string | null };
 export type CheckinRow = { month_start: string; income: number; investment_income: number; expenses: number; invested: number; debt_paid: number; salary_savings: number };
-export type PlanRow = { retirement_age: number; inflation_rate: number; expected_return: number; withdrawal_rate: number; step_up_percent?: number; step_up_month?: number | null; step_up_done_year?: number | null };
+export type PlanRow = { retirement_age: number; inflation_rate: number; expected_return: number; withdrawal_rate: number; retirement_expenses?: number | null; step_up_percent?: number; step_up_month?: number | null; step_up_done_year?: number | null };
 export type LessonRow = { lesson_id: string; answered_correctly: boolean; completed_at: string };
 
 export type FinancialState = {
@@ -62,7 +62,7 @@ export async function loadFinancialState(supabase: SupabaseClient, userId: strin
   const country = getCountry(countryFromCurrency(profileResult.data?.currency));
   if (profileResult.data?.currency && typeof window !== "undefined" && readStoredCountry() !== country.code) storeCountry(country.code);
   const countryPlan: PlanRow = { retirement_age: country.defaults.retirementAge, inflation_rate: country.defaults.inflation, expected_return: country.defaults.expectedReturn, withdrawal_rate: country.defaults.withdrawal };
-  const plan: PlanRow = planResult.data ? { retirement_age: Number(planResult.data.retirement_age ?? countryPlan.retirement_age), inflation_rate: Number(planResult.data.inflation_rate ?? countryPlan.inflation_rate), expected_return: Number(planResult.data.expected_return ?? countryPlan.expected_return), withdrawal_rate: Number(planResult.data.withdrawal_rate ?? countryPlan.withdrawal_rate), step_up_percent: Number(planResult.data.step_up_percent ?? 0), step_up_month: planResult.data.step_up_month ?? null, step_up_done_year: planResult.data.step_up_done_year ?? null } : countryPlan;
+  const plan: PlanRow = planResult.data ? { retirement_age: Number(planResult.data.retirement_age ?? countryPlan.retirement_age), inflation_rate: Number(planResult.data.inflation_rate ?? countryPlan.inflation_rate), expected_return: Number(planResult.data.expected_return ?? countryPlan.expected_return), withdrawal_rate: Number(planResult.data.withdrawal_rate ?? countryPlan.withdrawal_rate), step_up_percent: Number(planResult.data.step_up_percent ?? 0), step_up_month: planResult.data.step_up_month ?? null, step_up_done_year: planResult.data.step_up_done_year ?? null, retirement_expenses: planResult.data.retirement_expenses == null ? null : Number(planResult.data.retirement_expenses) } : countryPlan;
   const rawGoals: Goal[] = (goalsResult.data ?? []).map(row => ({ ...row, target_amount: Number(row.target_amount), saved_amount: Number(row.saved_amount), monthly_contribution: Number(row.monthly_contribution), expected_return: Number(row.expected_return), inflation_rate: Number(row.inflation_rate) }));
   const goals: Goal[] = applyLinkedSavings(rawGoals, accounts); // linked portfolio items are the goal's savings
 
@@ -95,6 +95,7 @@ export async function loadFinancialState(supabase: SupabaseClient, userId: strin
       term_cover_amount: Number(data.term_cover_amount ?? 0),
       currency: data.currency,
       withdrawal_rate: plan.withdrawal_rate,
+      retirement_expenses: plan.retirement_expenses ?? null,
     };
   }
 

@@ -159,6 +159,10 @@ export function getFreedomPath(profile: FinancialProfile, options: PathOptions =
       href: "/plan", cleared: score.fireProgress >= 100, progress: ratio(score.fireProgress, 100), progressLabel: `${score.fireProgress.toFixed(1)}% of target`,
     },
   ];
+  // Coast FIRE comes before Halfway only when it's the smaller milestone. With few years left to grow, the
+  // Coast number can be more than half the target, so Halfway is reached first.
+  const coastIndex = levels.findIndex(level => level.id === "coast");
+  if (score.fireTarget > 0 && coastNumber > score.fireTarget * 0.5 && levels[coastIndex + 1]?.id === "halfway") [levels[coastIndex], levels[coastIndex + 1]] = [levels[coastIndex + 1], levels[coastIndex]];
   return levels.map((level, index) => ({ ...level, level: index + 1, progress: level.cleared ? 1 : Math.min(0.99, level.progress) }));
 }
 
