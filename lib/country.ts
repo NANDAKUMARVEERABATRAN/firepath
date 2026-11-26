@@ -76,10 +76,27 @@ export function storeCountry(code: CountryCode) {
   try { window.dispatchEvent(new CustomEvent(COUNTRY_EVENT, { detail: code })); } catch { /* not in a browser */ }
 }
 
-/** Formats money for a country: "₹1,20,000" / "AED 15,000"; compact for very large amounts. */
+const symbolOf = (c: CountryConfig) => (c.code === "IN" ? "₹" : "AED ");
+const bigUnit = (c: CountryConfig, v: number): [string, number] | null => c.wordsStyle === "indian" ? (v >= 1e7 ? ["crore", 1e7] : null) : v >= 1e9 ? ["billion", 1e9] : v >= 1e6 ? ["million", 1e6] : null;
+const trimmed = (n: number, locale: string) => (Math.round(n * 100) / 100).toLocaleString(locale, { maximumFractionDigits: 2 });
+
+/**
+ * Money for a country, written the same way everywhere: "₹45,000", "₹28,58,438", "₹2.86 crore"
+ * (UAE: "AED 45,000", "AED 1.25 million"). Big units are always spelled out, never "Cr" or "L".
+ */
 export function formatCountryMoney(value: number, code: CountryCode = "IN"): string {
   const c = getCountry(code);
-  return new Intl.NumberFormat(c.locale, { style: "currency", currency: c.currency, maximumFractionDigits: Math.abs(value) >= 10000000 ? 2 : 0, notation: Math.abs(value) >= 10000000 ? "compact" : "standard" }).format(value);
+  const unit = bigUnit(c, Math.abs(value));
+  if (unit) return `${value < 0 ? "−" : ""}${symbolOf(c)}${trimmed(Math.abs(value) / unit[1], c.locale)} ${unit[0]}`;
+  return new Intl.NumberFormat(c.locale, { style: "currency", currency: c.currency, maximumFractionDigits: 0 }).format(value);
+}
+
+/** Shorter money for chart axes and tight spaces: "₹45,000", "₹1.5 lakh", "₹2.3 crore" (same words as everywhere else). */
+export function shortCountryMoney(value: number, code: CountryCode = "IN"): string {
+  const c = getCountry(code);
+  const v = Math.abs(value), sign = value < 0 ? "−" : "";
+  if (c.wordsStyle === "indian" && v >= 1e5 && v < 1e7) return `${sign}${symbolOf(c)}${trimmed(v / 1e5, c.locale)} lakh`;
+  return formatCountryMoney(value, code);
 }
 
 /** Amount in words: India "1.2 lakh" / "2.5 crore"; UAE "120 thousand" / "2.5 million". */

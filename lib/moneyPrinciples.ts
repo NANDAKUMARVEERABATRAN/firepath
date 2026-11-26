@@ -4,7 +4,7 @@ export const moneyPrinciples = [
     inspiration: "The Psychology of Money",
     title: "Define what “enough” means to you",
     scoreAreas: ["FIRE progress"],
-    idea: "A FIRE target is more useful when it reflects the life you want to fund, rather than a number chosen only for comparison.",
+    idea: "A FIRE number is more useful when it reflects the life you want to fund, rather than a number chosen only for comparison.",
     action: "Write down the monthly spending your future plan should support, and revisit it when your priorities change.",
     href: "/plan",
     link: "Review your FIRE plan",

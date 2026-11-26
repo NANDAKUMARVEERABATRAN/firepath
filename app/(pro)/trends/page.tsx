@@ -51,7 +51,7 @@ export default function TrendsPage() {
   }, [box]);
   const narrow = W < 520;
   const H = narrow ? 230 : 280;
-  const M = { top: 14, right: 10, bottom: 30, left: narrow ? 42 : 52 };
+  const M = { top: 14, right: 10, bottom: 30, left: narrow ? 64 : 76 };
   const innerW = W - M.left - M.right, innerH = H - M.top - M.bottom;
 
   useEffect(() => {
@@ -76,7 +76,6 @@ export default function TrendsPage() {
   }, []);
 
   const money = (v: number) => formatCountryMoney(Math.round(v), code);
-  const symbol = code === "AE" ? "AED " : "₹";
   const months = useMemo(() => monthlyRows(checkins), [checkins]);
   const rows: TrendRow[] = useMemo(() => range === "year" ? yearlyRows(months) : range === "12" ? months.slice(-12) : months, [months, range]);
   const facts = useMemo(() => highlights(range === "year" ? months : rows), [months, rows, range]);
@@ -134,7 +133,7 @@ export default function TrendsPage() {
         <ul className="tr-legend">{SERIES.map(s => <li key={s.key}><i style={{ background: s.color }} />{s.label}</li>)}</ul>
         <div className="tr-chart" ref={setBox}>
           <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} role="img" aria-label="Stacked columns: where each period's money went">
-            {[0, 0.25, 0.5, 0.75, 1].map(t => <g key={t}><line x1={M.left} x2={W - M.right} y1={ym(moneyMax * t)} y2={ym(moneyMax * t)} className="tr-grid" /><text x={M.left - 8} y={ym(moneyMax * t) + 4} textAnchor="end" className="tr-axis">{shortMoney(moneyMax * t, symbol)}</text></g>)}
+            {[0, 0.25, 0.5, 0.75, 1].map(t => <g key={t}><line x1={M.left} x2={W - M.right} y1={ym(moneyMax * t)} y2={ym(moneyMax * t)} className="tr-grid" /><text x={M.left - 8} y={ym(moneyMax * t) + 4} textAnchor="end" className="tr-axis">{shortMoney(moneyMax * t, code)}</text></g>)}
             {hover !== null && <rect x={M.left + band * hover} y={M.top} width={band} height={innerH} className="tr-hoverband" />}
             {rows.map((r, i) => {
               let base = 0;

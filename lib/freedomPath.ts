@@ -156,13 +156,13 @@ export function getFreedomPath(profile: FinancialProfile, options: PathOptions =
     {
       id: "halfway", title: "Halfway to freedom", book: "The Intelligent Investor",
       why: "Halfway, compounding starts doing as much work as your salary. Staying patient through market swings matters most here.",
-      howToClear: "Reach 50% of your FIRE target in FIRE-accessible investments.",
+      howToClear: "Reach 50% of your FIRE number in FIRE-accessible investments.",
       href: "/dashboard", cleared: score.fireProgress >= 50, progress: ratio(score.fireProgress, 50), progressLabel: `${score.fireProgress.toFixed(1)}% of target`,
     },
     {
       id: "free", title: "Financially independent", book: "The Psychology of Money",
       why: "Your investments can fund your lifestyle. Work becomes a choice — the highest dividend money pays is control over your time.",
-      howToClear: "Reach 100% of your FIRE target.",
+      howToClear: "Reach 100% of your FIRE number.",
       href: "/plan", cleared: score.fireProgress >= 100, progress: ratio(score.fireProgress, 100), progressLabel: `${score.fireProgress.toFixed(1)}% of target`,
     },
     {

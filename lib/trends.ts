@@ -1,3 +1,5 @@
+import { shortCountryMoney, type CountryCode } from "./country.ts";
+
 /**
  * Money trends from monthly check-ins (and budget entries for categories). Pure functions, so they're testable.
  * Definitions match the rest of the app: earned = take-home + EPF/NPS deducted from salary;
@@ -82,14 +84,8 @@ export function categoryTotals(entries: { month_start: string; category: string;
   }).sort((a, b) => b.total - a.total);
 }
 
-/** "₹1.2L", "₹45k", "₹2.3Cr": short labels for chart axes. */
-export function shortMoney(value: number, symbol = "₹"): string {
-  const v = Math.abs(value), sign = value < 0 ? "−" : "";
-  if (v >= 1e7) return `${sign}${symbol}${(v / 1e7).toFixed(v >= 1e8 ? 0 : 1)}Cr`;
-  if (v >= 1e5) return `${sign}${symbol}${(v / 1e5).toFixed(v >= 1e6 ? 0 : 1)}L`;
-  if (v >= 1e3) return `${sign}${symbol}${Math.round(v / 1e3)}k`;
-  return `${sign}${symbol}${Math.round(v)}`;
-}
+/** Short labels for chart axes, using the app's one money style ("₹45,000", "₹1.5 lakh", "₹2.3 crore"). */
+export const shortMoney = (value: number, code: CountryCode = "IN") => shortCountryMoney(value, code);
 
 /** Round axis maximum up to a friendly number. */
 export function niceMax(value: number): number {

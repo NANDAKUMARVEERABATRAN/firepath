@@ -54,7 +54,7 @@ export function idleMoney(income: number, expenses: number, invested: number): n
 
 /* ---------------- Impact of cutting spending ---------------- */
 
-export type CutImpactInput = { accessible: number; monthlyInvestment: number; monthlyExpenses: number; monthlyCut: number; realReturnPercent: number; withdrawalRatePercent: number; /** Spending the FIRE target is based on, if different (planned retirement spending). */ targetMonthlyExpenses?: number };
+export type CutImpactInput = { accessible: number; monthlyInvestment: number; monthlyExpenses: number; monthlyCut: number; realReturnPercent: number; withdrawalRatePercent: number; /** Spending the FIRE number is based on, if different (planned retirement spending). */ targetMonthlyExpenses?: number };
 export type CutImpact = { monthlyCut: number; yearlyCut: number; targetBefore: number; targetAfter: number; targetDrop: number; yearsBefore: number | null; yearsAfter: number | null; yearsSooner: number | null; valueIn10Years: number };
 
 /**

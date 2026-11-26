@@ -33,7 +33,7 @@ export default function Hero() {
             </div>
             <div className="metric-card">
               <span className="tiny-label">ILLUSTRATIVE TARGET CORPUS</span>
-              <strong>{country.code === "IN" ? "₹3.8 Cr" : "AED 5.1M"}</strong>
+              <strong>{country.code === "IN" ? "₹3.8 crore" : "AED 5.1 million"}</strong>
               <span className="metric-note">Example only · Your result depends on your inputs</span>
             </div>
             <div className="chart-area">

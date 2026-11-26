@@ -24,11 +24,11 @@ export type FinancialProfile = {
   highInterestDebt?: number;
   detailedDebtData?: boolean;
   withdrawal_rate?: number;
-  /** Optional monthly spending after you stop working (today's money); the FIRE target uses it when set. */
+  /** Optional monthly spending after you stop working (today's money); the FIRE number uses it when set. */
   retirement_expenses?: number | null;
 };
 
-/** Monthly spending the FIRE target is built on: planned retirement spending if set, else today's spending. */
+/** Monthly spending the FIRE number is built on: planned retirement spending if set, else today's spending. */
 export const targetExpenses = (profile: Pick<FinancialProfile, "monthly_expenses" | "retirement_expenses">) => Math.max(0, profile.retirement_expenses != null && profile.retirement_expenses > 0 ? profile.retirement_expenses : profile.monthly_expenses);
 
 export type ScoreCategory = { name: string; score: number; max: number; explanation: string };
@@ -64,7 +64,7 @@ export function getFireScore(profile: FinancialProfile): { score: number; catego
     { name: "Regular investing", score: clamp((investingRate / 20) * 20, 20), max: 20, explanation: `${investingRate.toFixed(0)}% of income invested monthly; 20% earns full points.` },
     { name: "Protection review", score: (profile.has_health_insurance && (profile.health_cover_amount ?? 0) > 0 ? 7.5 : 0) + (!profile.has_dependents || (profile.has_term_insurance && (profile.term_cover_amount ?? 0) > 0) ? 7.5 : 0), max: 15, explanation: `Self-reported health cover: ${profile.has_health_insurance ? "yes" : "no"}${profile.has_health_insurance && profile.health_cover_amount ? ` (${profile.health_cover_amount.toLocaleString()} ${profile.currency})` : ""}. ${profile.has_dependents ? `Term cover: ${profile.has_term_insurance ? "yes" : "no"}${profile.has_term_insurance && profile.term_cover_amount ? ` (${profile.term_cover_amount.toLocaleString()} ${profile.currency})` : ""}.` : "No income dependents reported, so term cover is not scored."} This does not judge suitability.` },
     { name: "Debt health", score: debtHealthScore, max: 15, explanation: profile.detailedDebtData ? `Debt payments use ${(debtServiceRate * 100).toFixed(0)}% of income; high-interest debt is ${highInterestDebtRatio.toFixed(1)}× annual income. Lower burdens earn more points.` : "Based on total debt relative to income. Add individual loans to include monthly payments and high-interest debt in this category." },
-    { name: "FIRE progress", score: clamp((fireProgress / 100) * 10, 10), max: 10, explanation: `${fireProgress.toFixed(1)}% of an illustrative target using ${fireAssets.toLocaleString()} ${profile.currency} in investable assets and a ${profile.withdrawal_rate ?? 3.5}% withdrawal assumption.` },
+    { name: "FIRE progress", score: clamp((fireProgress / 100) * 10, 10), max: 10, explanation: `${fireProgress.toFixed(1)}% of an illustrative target using ${fireAssets.toLocaleString()} ${profile.currency} in FIRE-accessible investments and a ${profile.withdrawal_rate ?? 3.5}% withdrawal assumption.` },
   ].map(category => ({ ...category, score: Math.round(category.score * 10) / 10 }));
 
   return { score: Math.round(categories.reduce((total, category) => total + category.score, 0)), categories, netWorth, savingsRate, emergencyMonths, fireTarget, fireProgress, withdrawalRate: profile.withdrawal_rate ?? 3.5, debtServiceRate };
@@ -144,9 +144,9 @@ export function getBadges(profile: FinancialProfile, investmentStreak = 0): Badg
     { name: "Debt Tamer", description: "Report no outstanding liabilities.", earned: profile.liabilities === 0 && profile.assets > 0 },
     { name: "Protection Planner", description: "Record health cover and review term cover if someone depends on your income.", earned: profile.has_health_insurance && (profile.health_cover_amount ?? 0) > 0 && (!profile.has_dependents || (profile.has_term_insurance && (profile.term_cover_amount ?? 0) > 0)) },
     { name: "Freedom Fueler", description: "Reach a savings rate of 30% or more.", earned: savingsRate >= 30 },
-    { name: "Trailblazer", description: "Reach 25% of your illustrative FIRE target.", earned: progress >= 25 },
-    { name: "Pathfinder", description: "Reach 50% of your illustrative FIRE target.", earned: progress >= 50 },
-    { name: "Pioneer", description: "Reach 75% of your illustrative FIRE target.", earned: progress >= 75 },
-    { name: "Freedom Finisher", description: "Reach 100% of your illustrative FIRE target.", earned: progress >= 100 },
+    { name: "Trailblazer", description: "Reach 25% of your illustrative FIRE number.", earned: progress >= 25 },
+    { name: "Pathfinder", description: "Reach 50% of your illustrative FIRE number.", earned: progress >= 50 },
+    { name: "Pioneer", description: "Reach 75% of your illustrative FIRE number.", earned: progress >= 75 },
+    { name: "Freedom Finisher", description: "Reach 100% of your illustrative FIRE number.", earned: progress >= 100 },
   ];
 }

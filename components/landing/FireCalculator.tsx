@@ -62,7 +62,7 @@ export default function FireCalculator() {
     { label: "Your current age", value: age, set: setAge, min: 18, max: 75, suffix: "years" },
     { label: "Target retirement age", value: retireAge, set: setRetireAge, min: age, max: 85, suffix: "years" },
     { label: "Monthly household expenses", value: expenses, set: setExpenses, min: country.calculator.step, max: country.calculator.expensesMax, step: country.calculator.step, suffix: currency },
-    { label: "Current investable assets", value: assets, set: setAssets, min: 0, max: country.calculator.assetsMax, step: country.calculator.step * 10, suffix: currency },
+    { label: "Current investments & savings", value: assets, set: setAssets, min: 0, max: country.calculator.assetsMax, step: country.calculator.step * 10, suffix: currency },
     { label: "Monthly investment", value: monthlyInvestment, set: setMonthlyInvestment, min: 0, max: country.calculator.investmentMax, step: country.calculator.step, suffix: currency },
   ];
 
@@ -93,7 +93,7 @@ export default function FireCalculator() {
             <div className="calc-disclaimer"><Info size={15}/> All amounts are shown in {currency}. Illustrative assumptions only; returns and withdrawal rates are not guaranteed or recommendations.</div>
           </div>
           <div className="calculator-results">
-            <span className="result-kicker">YOUR ESTIMATED FIRE TARGET</span>
+            <span className="result-kicker">YOUR ESTIMATED FIRE NUMBER</span>
             <div className="result-number">{money(result.targetCorpus)}</div>
             <p>Estimated corpus required at age {retireAge}, including {inflation}% inflation. That’s <b>{money(result.targetCorpus / Math.pow(1 + inflation / 100, result.years))}</b> in today’s money.</p>
             <div className="result-divider"/>

@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { FinancialProfile } from "./fireScore.ts";
 import { applyLinkedSavings, type Goal } from "./goals.ts";
 import { normalizeSnapshots, type Snapshot } from "./progress.ts";
-import { countryFromCurrency, getCountry, readStoredCountry, storeCountry } from "./country.ts";
+import { countryFromCurrency, formatCountryMoney, getCountry, readStoredCountry, storeCountry } from "./country.ts";
 
 export type AccountRow = { id: string; name: string; kind: "asset" | "liability"; category: string; investment_type: string | null; current_value: number; monthly_payment: number; is_high_interest: boolean; fire_treatment: string; property_use?: "self_occupied" | "rented" | "investment" | null; goal_id?: string | null };
 export type CheckinRow = { month_start: string; income: number; investment_income: number; expenses: number; invested: number; debt_paid: number; salary_savings: number };
@@ -114,8 +114,7 @@ export async function loadFinancialState(supabase: SupabaseClient, userId: strin
 }
 
 export function formatMoney(value: number, currency: "INR" | "AED" | "USD" = "INR"): string {
-  const locale = currency === "INR" ? "en-IN" : currency === "AED" ? "en-AE" : "en-US";
-  return new Intl.NumberFormat(locale, { style: "currency", currency, maximumFractionDigits: Math.abs(value) >= 10000000 ? 2 : 0, notation: Math.abs(value) >= 10000000 ? "compact" : "standard" }).format(value);
+  return formatCountryMoney(value, countryFromCurrency(currency)); // one money style app-wide
 }
 
 /** Groups assets into a readable portfolio mix. */

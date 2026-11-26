@@ -51,9 +51,9 @@ test("category totals compare with the previous period and skip savings", () => 
 });
 
 test("axis helpers", () => {
-  assert.equal(shortMoney(45000), "₹45k");
-  assert.equal(shortMoney(150000), "₹1.5L");
-  assert.equal(shortMoney(23000000), "₹2.3Cr");
+  assert.equal(shortMoney(45000), "₹45,000");
+  assert.equal(shortMoney(150000), "₹1.5 lakh");
+  assert.equal(shortMoney(23000000), "₹2.3 crore");
   assert.equal(niceMax(87000), 100000);
   assert.equal(niceMax(230000), 250000);
 });

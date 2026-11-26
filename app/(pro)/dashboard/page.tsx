@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { getActionSteps, getBadges, getFireScore, getInvestmentStreak, type FinancialProfile } from "@/lib/fireScore";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
+import { countryFromCurrency, formatCountryMoney } from "@/lib/country";
 import PrincipleScoreImpact from "@/components/dashboard/PrincipleScoreImpact";
 
 export default function DashboardPage() {
@@ -115,7 +116,7 @@ export default function DashboardPage() {
   const badges = scoreProfile ? getBadges(scoreProfile, investmentStreak).map(badge => ({ ...badge, earned: badge.earned || badgeKeys.has(badge.name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "")) })) : [];
   const actionSteps = scoreProfile ? getActionSteps(scoreProfile) : [];
   const historyMax = Math.max(1, ...checkinHistory.map(entry => entry.income));
-  const formatMoney = (value: number) => profile ? new Intl.NumberFormat(profile.currency === "INR" ? "en-IN" : profile.currency === "AED" ? "en-AE" : "en-US", { style: "currency", currency: profile.currency, maximumFractionDigits: 0, notation: value > 9999999 ? "compact" : "standard" }).format(value) : "—";
+  const formatMoney = (value: number) => profile ? formatCountryMoney(value, countryFromCurrency(profile.currency)) : "—";
 
   return (
     <>

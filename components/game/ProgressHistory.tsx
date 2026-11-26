@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { TrendingUp } from "lucide-react";
-import { formatCountryMoney, countryFromCurrency, countryAmountInWords } from "@/lib/country";
+import { formatCountryMoney, countryFromCurrency, shortCountryMoney } from "@/lib/country";
 import { getProgressSummary, type Snapshot } from "@/lib/progress";
 
 const W = 640, H = 230, PAD = { top: 16, right: 16, bottom: 30, left: 64 };
@@ -13,7 +13,7 @@ export default function ProgressHistory({ snapshots }: { snapshots: Snapshot[] }
   const [hover, setHover] = useState<number | null>(null);
   const code = countryFromCurrency(snapshots[snapshots.length - 1]?.currency);
   const money = (value: number) => formatCountryMoney(value, code);
-  const compact = (value: number) => (value >= 1000 ? countryAmountInWords(value, code).replace(" thousand", "k").replace(" million", "M").replace(" lakh", "L").replace(" crore", "Cr") : String(Math.round(value)));
+  const compact = (value: number) => shortCountryMoney(value, code); // same money words as everywhere
   const summary = useMemo(() => getProgressSummary(snapshots), [snapshots]);
 
   const chart = useMemo(() => {

@@ -54,3 +54,11 @@ test("only India is open to new users for now; UAE settings are kept for later",
   assert.equal(isCountryEnabled("AE"), false);
   assert.equal(getCountry("AE").currency, "AED"); // existing AED profiles still format correctly
 });
+
+test("one money style everywhere: lakh and crore spelled out, never Cr/L", () => {
+  assert.equal(formatCountryMoney(28584384, "IN"), "₹2.86 crore");
+  assert.equal(formatCountryMoney(10000000, "IN"), "₹1 crore");
+  assert.equal(formatCountryMoney(2858438, "IN"), "₹28,58,438");
+  assert.equal(formatCountryMoney(-25000000, "IN"), "−₹2.5 crore");
+  assert.equal(formatCountryMoney(1250000, "AE"), "AED 1.25 million");
+});

@@ -12,7 +12,7 @@ export const QUICKLOG_CHECKIN_KEY = "ff-quicklog-checkin";
 type Account = { id: string; name: string; kind: string; category: string; investment_type: string | null; current_value: number };
 const CHECKIN_LABELS: Record<keyof CheckinFields, string> = { income: "Reached your bank", salary_pf: "EPF / VPF from salary", salary_pension: "NPS from salary", investment_income: "Investment income", expenses: "Total spent this month", invested: "Invested from bank", debt_paid: "Loan EMIs paid" };
 const CATEGORY_LABELS: Record<SpendCategory, string> = { housing: "Housing", utilities: "Utilities", groceries: "Groceries", dining: "Dining out", transport: "Transport", healthcare: "Healthcare", insurance: "Insurance", education: "Education", family: "Family", debt_repayment: "Debt payments", personal: "Personal & shopping", other: "Other" };
-const EXAMPLES = ["Salary 1.2L aaya, PF 7,200 kata, rent 25k, SIP 25k", "Swiggy 1,800, petrol 3k, electricity bill 2,400", "PPF balance 3.2 lakh, home loan outstanding 24L"];
+const EXAMPLES = ["Salary 1.2 lakh aaya, PF 7,200 kata, rent 25,000, SIP 25,000", "Swiggy 1,800, petrol 3,000, electricity bill 2,400", "PPF balance 3.2 lakh, home loan outstanding 24 lakh"];
 const today = () => new Date().toLocaleDateString("en-CA");
 const monthStart = (date = today()) => `${date.slice(0, 7)}-01`;
 
