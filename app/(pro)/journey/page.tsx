@@ -208,7 +208,7 @@ export default function JourneyPage() {
       <section className="journey-hero">
         <div className="rank-medal" aria-hidden="true"><Trophy size={30} /><b>{game.rank.rankNumber}</b></div>
         <div className="rank-copy">
-          <p className="result-kicker">RANK {game.rank.rankNumber} OF {RANKS.length}</p>
+          <p className="result-kicker" title="Your player rank grows with XP: check-ins, lessons, streaks, goals and levels.">PLAYER RANK {game.rank.rankNumber} OF {RANKS.length} · EARNED WITH XP</p>
           <h1>{game.rank.name}</h1>
           <div className="xp-bar" role="progressbar" aria-valuenow={Math.round(game.rank.progress * 100)} aria-valuemin={0} aria-valuemax={100}><span style={{ width: `${game.rank.progress * 100}%` }} /></div>
           <p className="xp-line"><b>{game.xp.total.toLocaleString("en-IN")} XP</b>{game.rank.next ? <> · {game.rank.xpToNext.toLocaleString("en-IN")} XP to <b>{game.rank.next}</b></> : " · Max rank reached"}</p>
@@ -216,7 +216,7 @@ export default function JourneyPage() {
         <div className="hero-stats">
           <div><Flame size={18} /><strong>{game.streak}</strong><span>month investing streak</span></div>
           <div><Sparkles size={18} /><strong>{game.score.score}</strong><span>FIRE score /100</span></div>
-          <div><Trophy size={18} /><strong>{game.path.filter(level => level.cleared).length}/{PATH_LEVELS}</strong><span>levels cleared</span></div>
+          <div><Trophy size={18} /><strong>{game.path.filter(level => level.cleared).length}/{PATH_LEVELS}</strong><span>money levels cleared</span></div>
         </div>
       </section>
 
@@ -273,7 +273,7 @@ export default function JourneyPage() {
           </article> : <article className="quest-card done"><h2>🥂 All {PATH_LEVELS} levels cleared: Fat FIRE!</h2><p>You’ve reached financial independence with room to spare. Keep checking in yearly to stay there.</p></article>}
 
           <section className="path-section">
-            <div className="section-heading"><p className="eyebrow"><MapIcon size={14} /> THE FREEDOM PATH</p><h2>{PATH_LEVELS} levels to financial independence and beyond.</h2><p>Follow them in order — each one makes the next one safer.</p></div>
+            <div className="section-heading"><p className="eyebrow"><MapIcon size={14} /> THE FREEDOM PATH</p><h2>{PATH_LEVELS} levels to financial independence and beyond.</h2><p>Money milestones, cleared by your real finances. Follow them in order: each one makes the next one safer. (Your player rank is separate: it grows with XP from your habits.)</p></div>
             <ol className="path-list">{game.path.map(level => {
               const isCurrent = game.current?.id === level.id;
               return <li key={level.id} className={`path-level${level.cleared ? " cleared" : ""}${isCurrent ? " current" : ""}`}>

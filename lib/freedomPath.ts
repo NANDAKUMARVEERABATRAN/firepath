@@ -1,4 +1,4 @@
-import { getFireScore, type FinancialProfile } from "./fireScore.ts";
+import { getFireScore, totalIncome, type FinancialProfile } from "./fireScore.ts";
 
 /**
  * The Freedom Path: an ordered set of levels that turns the FIRE journey into a game.
@@ -84,14 +84,15 @@ export function coastFireNumber(target: number, years: number, realRatePercent: 
 
 export function getFreedomPath(profile: FinancialProfile, options: PathOptions = {}): PathLevel[] {
   const score = getFireScore(profile);
-  const income = Math.max(0, profile.monthly_income);
+  const income = totalIncome(profile); // take-home + EPF/NPS from salary, same as the FIRE score
   const expenses = Math.max(0, profile.monthly_expenses);
   const accessible = Math.max(0, profile.investableAssets ?? profile.fire_accessible_assets ?? profile.assets);
   const realRate = (options.expectedReturn ?? 10) - (options.inflation ?? 6);
   const yearsLeft = Math.max(0, (options.retirementAge ?? 60) - (profile.age ?? 30));
   const coastNumber = coastFireNumber(score.fireTarget, yearsLeft, realRate);
   const fatTarget = score.fireTarget * FAT_FIRE_MULTIPLE;
-  const investRate = income > 0 ? profile.monthly_investment / income : 0;
+  // Same basis as the savings rate: bank investing + salary EPF/NPS, out of everything earned.
+  const investRate = income > 0 ? (profile.monthly_investment + (profile.monthly_salary_savings ?? 0)) / income : 0;
   const highInterest = profile.highInterestDebt ?? 0;
   const uae = profile.currency === "AED";
   const protectedNow = profile.has_health_insurance && (profile.health_cover_amount ?? 0) > 0 && (!profile.has_dependents || (profile.has_term_insurance && (profile.term_cover_amount ?? 0) > 0));
@@ -144,7 +145,7 @@ export function getFreedomPath(profile: FinancialProfile, options: PathOptions =
       howToClear: uae
         ? "Invest at least 20% of your monthly income automatically — set up a monthly transfer to your investment account on payday."
         : "Invest at least 20% of your monthly income automatically, for example with a monthly SIP.",
-      href: "/check-in", cleared: investRate >= 0.2, progress: ratio(investRate, 0.2), progressLabel: `${(investRate * 100).toFixed(0)}% invested (goal 20%)`,
+      href: "/check-in", cleared: investRate >= 0.2, progress: ratio(investRate, 0.2), progressLabel: `${(investRate * 100).toFixed(0)}% invested (goal 20%)${investRate * 100 > score.savingsRate + 2 ? " · more than you keep after spending: are all expenses logged?" : ""}`,
     },
     {
       id: "coast", title: "Coast FIRE", book: "The Simple Path to Wealth",

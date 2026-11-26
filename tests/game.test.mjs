@@ -98,3 +98,9 @@ test("Fat FIRE level needs 1.5× the FIRE number", () => {
   const atFat = getFreedomPath({ ...base, assets: target * 1.5, investableAssets: target * 1.5 });
   assert.ok(atFat.find(l => l.id === "fat").cleared);
 });
+
+test("pay-yourself-first uses the same income basis as the savings rate (incl. salary EPF/NPS)", () => {
+  const p = { age: 30, monthly_income: 90000, monthly_salary_savings: 10000, monthly_expenses: 60000, assets: 0, liabilities: 0, emergency_fund: 0, monthly_investment: 10000, has_health_insurance: false, has_term_insurance: false, currency: "INR" };
+  const level = getFreedomPath(p).find(l => l.id === "pay-first" || /invested/.test(l.progressLabel));
+  assert.match(level.progressLabel, /^20% invested/); // (10k + 10k) / 100k
+});
