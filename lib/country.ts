@@ -29,7 +29,7 @@ export const COUNTRIES: Record<CountryCode, CountryConfig> = {
     calculator: { expenses: 60000, assets: 2500000, monthlyInvestment: 25000, expensesMax: 1000000, assetsMax: 100000000, investmentMax: 1000000, step: 1000 },
     sliderSteps: [-5000, 5000, 10000, 25000], boostStep: 5000,
     laterAccessLabel: "EPF, PPF or NPS", laterAccessExamples: "Check your EPFO passbook or NPS app.",
-    pricing: { monthly: 99, yearly: 799 },
+    pricing: { monthly: 75, yearly: 500 },
   },
   AE: {
     code: "AE", name: "UAE", flag: "🇦🇪", currency: "AED", symbol: "AED", locale: "en-AE", wordsStyle: "international",
@@ -97,4 +97,10 @@ export function chipAmount(value: number, code: CountryCode = "IN"): string {
   const c = getCountry(code);
   if (c.wordsStyle === "indian") return `₹${countryAmountInWords(value, code)}`;
   return value >= 1e6 ? `AED ${value / 1e6}M` : `AED ${value / 1e3}k`;
+}
+
+/** How much cheaper the yearly plan is than paying monthly for 12 months, in whole percent. */
+export function yearlySavingPercent(code: CountryCode = "IN"): number {
+  const { monthly, yearly } = getCountry(code).pricing;
+  return monthly > 0 ? Math.round((1 - yearly / (monthly * 12)) * 100) : 0;
 }

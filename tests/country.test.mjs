@@ -40,3 +40,10 @@ test("Freedom Path wording adapts to the UAE", () => {
   assert.match(protection.why, /UAE/);
   assert.match(getFreedomPath({ ...base, currency: "INR" }).find(level => level.id === "protection").why, /India/);
 });
+
+import { yearlySavingPercent } from "../lib/country.ts";
+test("India pricing: ₹75/month or ₹500/year (44% saving); UAE unchanged", () => {
+  assert.deepEqual(getCountry("IN").pricing, { monthly: 75, yearly: 500 });
+  assert.equal(yearlySavingPercent("IN"), 44);
+  assert.equal(yearlySavingPercent("AE"), 34);
+});

@@ -10,7 +10,7 @@ import { createClient } from "@/lib/supabase/client";
 import { loadFinancialState, type FinancialState } from "@/lib/financialState";
 import { getGameSummary } from "@/lib/gameSummary";
 import { getProStatus, PRICING, type ProStatus, type SubscriptionRow } from "@/lib/subscription";
-import { countryFromCurrency, formatCountryMoney, getCountry, priceText } from "@/lib/country";
+import { countryFromCurrency, formatCountryMoney, getCountry, priceText, yearlySavingPercent } from "@/lib/country";
 import { lessons as allLessons } from "@/lib/wisdom";
 import { PATH_LEVELS } from "@/lib/freedomPath";
 
@@ -79,7 +79,7 @@ export default function AccountPage() {
   const offer = (() => {
     const yearlyPerMonth = priceText(Math.round(country.pricing.yearly / 12), code);
     switch (reason) {
-      case "price": return { title: "What if it cost less?", body: `Switch to the yearly plan and pay just ${yearlyPerMonth}/month — about a third less than monthly. Less than one coffee a month for a plan that could bring your freedom years closer.`, cta: "See the yearly plan", href: "/pricing" };
+      case "price": return { title: "What if it cost less?", body: `Switch to the yearly plan and pay just ${yearlyPerMonth}/month — ${yearlySavingPercent(code)}% less than monthly. Less than one coffee a month for a plan that could bring your freedom years closer.`, cta: "See the yearly plan", href: "/pricing" };
       case "unused": return { title: "It only needs 30 seconds a month", body: "FIREpath works best as a monthly habit: log your month (it’s pre-filled), glance at your freedom date, done. Your streak and progress chart do the motivating for you.", cta: "Log this month now", href: "/check-in" };
       case "done": return { title: "Congratulations! 🎉 Now protect it", body: "The hardest part is staying on track for years. FIREpath keeps your plan current as life changes — and shows you the moment you cross your FIRE number.", cta: "See my progress", href: "/journey" };
       case "feature": return { title: "Tell us what’s missing", body: "We read every answer. Write it below — it goes straight to the people building FIREpath, and many features come from requests like yours.", cta: "", href: "" };
@@ -97,7 +97,7 @@ export default function AccountPage() {
         {row ? <p className="account-sub">{cancelled ? `Cancelled — you keep full access until ${ends}. Your data stays safe.` : status.state === "expired" ? "Your plan has ended. Your data is safe." : `${status.daysLeft} day${status.daysLeft === 1 ? "" : "s"} left · renews or ends on ${ends}`}</p> : <p className="account-sub">You don’t have a plan yet.</p>}
         <div className="account-actions">
           {cancelled && status.state !== "expired" && <button type="button" className="button button-primary" onClick={() => void callRpc("resume_subscription")} disabled={busy}><Heart size={16} /> Keep my plan</button>}
-          {row?.plan !== "yearly" && <Link href="/pricing" className="button button-primary">Switch to yearly — save 33%</Link>}
+          {row?.plan !== "yearly" && <Link href="/pricing" className="button button-primary">Switch to yearly — save {yearlySavingPercent(code)}%</Link>}
           {row && !cancelled && status.state !== "expired" && <button type="button" className="text-link account-cancel" onClick={() => setStep("proud")}>{row.plan === "trial" ? "Cancel trial" : "Cancel subscription"}</button>}
         </div>
       </section>}

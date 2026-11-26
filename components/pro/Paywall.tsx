@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Check, Crown, Lock, ShieldCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { PRICING, START_TRIAL_KEY, type ProStatus } from "@/lib/subscription";
-import { getCountry, priceText } from "@/lib/country";
+import { getCountry, priceText, yearlySavingPercent } from "@/lib/country";
 import { useCountry } from "@/lib/useCountry";
 
 export const proBenefits = [
@@ -74,7 +74,7 @@ export default function Paywall({ status, onStarted, signedIn }: Props) {
           {canTrial && <p className="paywall-small"><ShieldCheck size={14} /> No card · no auto-charge · takes 5 seconds</p>}
           <div className="plan-options" role="radiogroup" aria-label="Choose a plan">
             <button type="button" role="radio" aria-checked={plan === "yearly"} className={`plan-option${plan === "yearly" ? " selected" : ""}`} onClick={() => setPlan("yearly")}>
-              <em>Best value · save 33%</em><strong>{priceText(price.yearly, code)}<small>/year</small></strong><span>Just {priceText(yearlyPerMonth, code)}/month</span>
+              <em>Best value · save {yearlySavingPercent(code)}%</em><strong>{priceText(price.yearly, code)}<small>/year</small></strong><span>Just {priceText(yearlyPerMonth, code)}/month</span>
             </button>
             <button type="button" role="radio" aria-checked={plan === "monthly"} className={`plan-option${plan === "monthly" ? " selected" : ""}`} onClick={() => setPlan("monthly")}>
               <strong>{priceText(price.monthly, code)}<small>/month</small></strong><span>Cancel anytime</span>

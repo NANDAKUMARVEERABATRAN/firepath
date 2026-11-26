@@ -37,7 +37,7 @@ India and the UAE are supported. `lib/country.ts` holds each country's currency,
 
 ### Free vs Pro
 
-The FIRE calculator on `/` is free without sign-in. Every page under `app/(pro)/` is wrapped by `components/pro/ProGate.tsx` and needs an active trial or plan once signed in (₹99/month or ₹799/year, see `lib/subscription.ts`). Paid checkout is not connected yet: `app/api/subscribe/route.ts` lists the Razorpay steps (server-side keys, subscription creation, and a signed webhook that updates `subscriptions` with the service-role key).
+The FIRE calculator on `/` is free without sign-in. Every page under `app/(pro)/` is wrapped by `components/pro/ProGate.tsx` and needs an active trial or plan once signed in (₹75/month or ₹500/year in India, AED 15/119 in the UAE; set in `lib/country.ts`). Paid checkout is not connected yet: `app/api/subscribe/route.ts` lists the Razorpay steps (server-side keys, subscription creation, and a signed webhook that updates `subscriptions` with the service-role key).
 
 ## Requirements
 
