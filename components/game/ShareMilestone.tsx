@@ -58,6 +58,7 @@ export default function ShareMilestone({ milestones }: { milestones: Milestone[]
   const [index, setIndex] = useState(0);
   const [preview, setPreview] = useState("");
   const [note, setNote] = useState("");
+  const [expanded, setExpanded] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const current = milestones[Math.min(index, milestones.length - 1)];
   const siteUrl = typeof window !== "undefined" ? (process.env.NEXT_PUBLIC_SITE_URL || window.location.origin) : "";
@@ -96,15 +97,17 @@ export default function ShareMilestone({ milestones }: { milestones: Milestone[]
 
   return (
     <section className="side-card share-card">
-      <div className="side-card-head"><h3><Share2 size={16} /> Share your progress</h3></div>
-      {milestones.length > 1 && <div className="qn-chips share-chips">{milestones.slice(0, 4).map((m, i) => <button key={m.id} type="button" className={i === index ? "selected" : ""} onClick={() => setIndex(i)}>{m.emoji} {CHIP_LABELS[m.id.split("-")[0]] ?? "Milestone"}</button>)}</div>}
+      <div className="side-card-head"><h3><Share2 size={16} /> Share your progress</h3><button type="button" className="text-link" onClick={() => void share()}>Share →</button></div>
       <canvas ref={canvasRef} hidden />
-      {preview ? <img className="share-preview" src={preview} alt={`${current.headline}. ${current.sub}`} /> : <div className="share-preview placeholder" />}
-      <div className="share-actions">
-        <button type="button" className="button button-primary" onClick={() => void share()}><Share2 size={15} /> Share</button>
-        <button type="button" className="text-link" onClick={() => void download()}><Download size={15} /> Save image</button>
+      <div className="share-row">
+        <button type="button" className="share-thumb" onClick={() => setExpanded(value => !value)} aria-label={expanded ? "Hide image preview" : "Show the full image"}>
+          {preview ? <img src={preview} alt="" /> : <span className="placeholder" />}
+        </button>
+        <div className="share-text"><strong>{current.emoji} {current.headline}</strong><small>{current.sub}</small></div>
       </div>
-      <p className="side-empty">{note || "No amounts are shown — only your progress. Friends who tap your link get the free FIRE calculator."}</p>
+      {expanded && preview && <img className="share-preview" src={preview} alt={`${current.headline}. ${current.sub}`} />}
+      {milestones.length > 1 && <div className="qn-chips share-chips">{milestones.slice(0, 4).map((m, i) => <button key={m.id} type="button" className={i === index ? "selected" : ""} onClick={() => setIndex(i)}>{m.emoji} {CHIP_LABELS[m.id.split("-")[0]] ?? "Milestone"}</button>)}</div>}
+      <p className="side-empty">{note || <>No amounts shown, only progress. <button type="button" className="share-save" onClick={() => void download()}><Download size={12} /> Save image</button></>}</p>
     </section>
   );
 }
