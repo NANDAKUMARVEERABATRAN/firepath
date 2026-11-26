@@ -16,12 +16,12 @@ import type { CountryCode } from "@/lib/country";
 import { getNetWorthBreakdown, propertyTreatment, propertyUseLabels, type FireTreatment, type PropertyUse } from "@/lib/netWorth";
 
 type Kind = "asset" | "liability";
-type Category = "cash" | "investment" | "property" | "vehicle" | "home_loan" | "vehicle_loan" | "education_loan" | "personal_loan" | "credit_card" | "other";
+type Category = "cash" | "investment" | "property" | "vehicle" | "home_loan" | "vehicle_loan" | "education_loan" | "personal_loan" | "gold_loan" | "credit_card" | "other";
 type InvestmentType = "mutual_fund" | "stocks" | "bonds" | "fixed_deposit" | "nps_tier_1" | "nps_tier_2" | "provident_fund" | "ppf" | "gold" | "crypto" | "other" | "gratuity" | "workplace_savings" | "pension";
 type Account = { id: string; kind: Kind; category: Category; name: string; current_value: number; interest_rate: number | null; monthly_payment: number; is_high_interest: boolean; investment_type: InvestmentType | null; fire_treatment: FireTreatment; available_from_age: number | null; property_use: PropertyUse | null; goal_id?: string | null };
 type AccountForm = { kind: Kind; category: Category; name: string; current_value: string; interest_rate: string; monthly_payment: string; is_high_interest: boolean; investment_type: InvestmentType | ""; fire_treatment: FireTreatment; available_from_age: string; property_use: PropertyUse; goal_id: string };
 const blank: AccountForm = { kind: "asset", category: "cash", name: "", current_value: "", interest_rate: "", monthly_payment: "", is_high_interest: false, investment_type: "", fire_treatment: "available", available_from_age: "", property_use: "self_occupied", goal_id: "" };
-const categoryLabels: Record<Category, string> = { cash: "Cash & deposits", investment: "Investments", property: "Property", vehicle: "Vehicle", home_loan: "Home loan", vehicle_loan: "Vehicle loan", education_loan: "Education loan", personal_loan: "Personal loan", credit_card: "Credit card", other: "Other" };
+const categoryLabels: Record<Category, string> = { cash: "Cash & deposits", investment: "Investments", property: "Property", vehicle: "Vehicle", home_loan: "Home loan", vehicle_loan: "Vehicle loan", education_loan: "Education loan", personal_loan: "Personal loan", gold_loan: "Gold loan", credit_card: "Credit card", other: "Other" };
 const investmentLabels: Record<InvestmentType, string> = { mutual_fund: "Mutual funds", stocks: "Stocks", bonds: "Bonds", fixed_deposit: "Fixed deposits", nps_tier_1: "NPS Tier I", nps_tier_2: "NPS Tier II", provident_fund: "EPF / PF", ppf: "PPF", gold: "Gold", crypto: "Crypto", other: "Other investment", gratuity: "End-of-service gratuity", workplace_savings: "Workplace savings (DEWS)", pension: "Pension (GPSSA)" };
 const defaultTreatment = (category: Category, investmentType: InvestmentType | "", propertyUse: PropertyUse = "self_occupied"): FireTreatment => category === "property" ? propertyTreatment(propertyUse) : category === "vehicle" || category === "other" ? "excluded" : ["nps_tier_1", "provident_fund", "ppf"].includes(investmentType) ? "later" : "available";
 
@@ -49,6 +49,7 @@ const portfolioPresets: Preset[] = [
   { id: "home-loan", emoji: "🏠", label: "Home loan", kind: "liability", category: "home_loan", fire: "excluded" },
   { id: "car-loan", emoji: "🚗", label: "Car / bike loan", kind: "liability", category: "vehicle_loan", fire: "excluded" },
   { id: "personal-loan", emoji: "💸", label: "Personal loan", kind: "liability", category: "personal_loan", fire: "excluded", highInterest: true },
+  { id: "gold-loan", emoji: "🪙", label: "Gold loan", kind: "liability", category: "gold_loan", fire: "excluded" },
   { id: "credit-card", emoji: "💳", label: "Credit card dues", kind: "liability", category: "credit_card", fire: "excluded", highInterest: true },
   { id: "edu-loan", emoji: "🎓", label: "Education loan", kind: "liability", category: "education_loan", fire: "excluded" },
   { id: "other-loan", emoji: "🧾", label: "Other loan", kind: "liability", category: "other", fire: "excluded" },
@@ -126,6 +127,7 @@ export default function AccountsPage() {
         : /\b(home|house|mortgage)\b|घर|मकान/.test(lower) ? "home_loan"
           : /credit card|क्रेडिट कार्ड/.test(lower) ? "credit_card"
             : /education loan|student loan/.test(lower) ? "education_loan"
+              : /gold loan|गोल्ड लोन|सोने पर (लोन|कर्ज)/.test(lower) ? "gold_loan"
               : /personal loan/.test(lower) ? "personal_loan" : "other";
     } else if (/\b(property|house|home|real estate|flat|apartment|plot|land|villa|shop)\b|प्रॉपर्टी|मकान|घर|फ्लैट|प्लॉट|जमीन|ज़मीन|दुकान/.test(lower)) category = "property";
     else if (/\b(vehicle|car|auto)\b|गाड़ी/.test(lower)) category = "vehicle";
