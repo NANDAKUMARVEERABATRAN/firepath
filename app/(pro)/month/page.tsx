@@ -35,7 +35,8 @@ export default function ThisMonthPage() {
   const [limits, setLimits] = useState<Partial<Record<MonthCategory, number>>>({});
   const [limitDraft, setLimitDraft] = useState<Partial<Record<MonthCategory, string>>>({});
   const [editLimits, setEditLimits] = useState(false);
-  const [limitsFrom, setLimitsFrom] = useState<string | null>(null); // month the shown limits were set in
+  const [limitsFrom, setLimitsFrom] = useState<string | null>(null);
+  const [usualSpent, setUsualSpent] = useState(0); // average of up to 3 earlier months (or the profile), to spot half-logged months // month the shown limits were set in
   const [logged, setLogged] = useState(false);
   const [history, setHistory] = useState<{ month_start: string; invested: number }[]>([]);
   const [salaryColumns, setSalaryColumns] = useState(false);
@@ -88,6 +89,8 @@ export default function ThisMonthPage() {
 
       const current = rows.find(r => r.month_start === m);
       const before = rows.find(r => r.month_start < m);
+      const earlier = rows.filter(r => r.month_start < m).slice(0, 3);
+      setUsualSpent(earlier.length ? earlier.reduce((s, r) => s + Number(r.expenses), 0) / earlier.length : Number(profile.data?.monthly_expenses ?? 0));
       const emis = (loans.data ?? []).reduce((s, r) => s + Number(r.monthly_payment), 0);
       const p = profile.data;
       setLogged(Boolean(current));
@@ -318,6 +321,7 @@ export default function ThisMonthPage() {
           <div><span>EMIs</span><b>{money(n(form.emis))}</b></div>
           <div className="left"><span>Left in bank</span><b>{money(summary.leftInBank)}</b></div>
         </div>
+        {usualSpent > 0 && spent < usualSpent * 0.5 && <p className="import-warning">🤔 Spending of {money(spent)} is much lower than your usual {money(usualSpent)}. Did you log everything (rent, bills, groceries, shopping)? A half-logged month makes your savings rate look higher than it is.</p>}
         {summary.earned > 0 && <p className="qn-rate-line">Savings rate: <b>{Math.round(summary.savingsRate)}%</b>{summary.fromSalary > 0 ? ` of ${money(summary.earned)} earned (incl. EPF/NPS)` : ""}{summary.leftInBank < 0 ? " · more went out than came in this month" : ""}</p>}
         <label className="tm-field"><span>A note to future you (optional)</span><textarea rows={2} maxLength={500} value={form.note} placeholder="e.g. Diwali shopping, bonus month, new SIP started" onChange={e => set("note")(e.target.value)} /></label>
         <button type="button" className="button button-primary tm-save" disabled={saving || n(form.takeHome) <= 0} onClick={() => void saveMonth()}>{saving ? "Saving…" : logged ? `Update ${monthName.split(" ")[0]}` : `Save ${monthName.split(" ")[0]} (+60 XP)`}</button>

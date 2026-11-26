@@ -20,3 +20,14 @@ test("planned retirement spending replaces today's spending in the FIRE target",
   // The emergency buffer still uses today's spending.
   assert.equal(getFireScore({ ...base, emergency_fund: 140000, retirement_expenses: 50000 }).emergencyMonths, 2);
 });
+
+test("a half-logged month can't shrink the FIRE number: it uses steady profile spending", () => {
+  // Check-ins averaged to ₹44k, but the profile says ₹70k a month.
+  const p = { ...base, monthly_expenses: 44000, lifestyle_expenses: 70000, emergency_fund: 420000 };
+  assert.equal(Math.round(getFireScore(p).fireTarget), Math.round(70000 * 12 / 0.035)); // ₹2.4 crore today
+  assert.equal(getFireScore(p).emergencyMonths, 6); // 4.2 lakh ÷ 70k
+  // Savings rate still reflects what was actually logged.
+  assert.equal(Math.round(getFireScore(p).savingsRate), Math.round((150000 - 44000) / 150000 * 100));
+  // Planned retirement spending still wins when set.
+  assert.equal(targetExpenses({ ...p, retirement_expenses: 90000 }), 90000);
+});

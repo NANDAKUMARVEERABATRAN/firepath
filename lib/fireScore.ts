@@ -26,10 +26,16 @@ export type FinancialProfile = {
   withdrawal_rate?: number;
   /** Optional monthly spending after you stop working (today's money); the FIRE number uses it when set. */
   retirement_expenses?: number | null;
+  /** Steady monthly spending from the profile (rent, EMIs, groceries…). The FIRE number and freedom years use this,
+   *  not a single month’s log, so a partly-logged month can’t shrink the goal. */
+  lifestyle_expenses?: number;
 };
 
+/** Normal monthly spending: the profile’s steady figure when known, else the logged/entered spending. */
+export const lifestyleExpenses = (profile: Pick<FinancialProfile, "monthly_expenses" | "lifestyle_expenses">) => Math.max(0, profile.lifestyle_expenses != null && profile.lifestyle_expenses > 0 ? profile.lifestyle_expenses : profile.monthly_expenses);
+
 /** Monthly spending the FIRE number is built on: planned retirement spending if set, else today's spending. */
-export const targetExpenses = (profile: Pick<FinancialProfile, "monthly_expenses" | "retirement_expenses">) => Math.max(0, profile.retirement_expenses != null && profile.retirement_expenses > 0 ? profile.retirement_expenses : profile.monthly_expenses);
+export const targetExpenses = (profile: Pick<FinancialProfile, "monthly_expenses" | "retirement_expenses" | "lifestyle_expenses">) => profile.retirement_expenses != null && profile.retirement_expenses > 0 ? profile.retirement_expenses : lifestyleExpenses(profile);
 
 export type ScoreCategory = { name: string; score: number; max: number; explanation: string };
 
@@ -41,7 +47,7 @@ export const totalIncome = (profile: Pick<FinancialProfile, "monthly_income" | "
 export function getFireScore(profile: FinancialProfile): { score: number; categories: ScoreCategory[]; netWorth: number; savingsRate: number; emergencyMonths: number; fireTarget: number; fireProgress: number; withdrawalRate: number; debtServiceRate: number } {
   const income = totalIncome(profile);
   const expenses = Math.max(0, profile.monthly_expenses);
-  const emergencyMonths = expenses > 0 ? profile.emergency_fund / expenses : 0;
+  const emergencyMonths = lifestyleExpenses(profile) > 0 ? profile.emergency_fund / lifestyleExpenses(profile) : 0;
   const savingsRate = income > 0 ? clamp(((income - expenses) / income) * 100, 100) : 0;
   // Salary deductions (EPF/NPS) are investing too, even though they're not FIRE-accessible until later.
   const investingRate = income > 0 ? clamp(((profile.monthly_investment + (profile.monthly_salary_savings ?? 0)) / income) * 100, 100) : 0;
@@ -75,8 +81,8 @@ export type ActionStep = { title: string; detail: string; href: string; priority
 export function getActionSteps(profile: FinancialProfile): ActionStep[] {
   const actions: ActionStep[] = [];
   const income = totalIncome(profile);
-  const expenses = Math.max(0, profile.monthly_expenses);
-  const emergencyMonths = expenses > 0 ? profile.emergency_fund / expenses : 0;
+  const expenses = Math.max(0, profile.monthly_expenses); // logged cash flow
+  const emergencyMonths = lifestyleExpenses(profile) > 0 ? profile.emergency_fund / lifestyleExpenses(profile) : 0;
   const debtPaymentRate = income > 0 ? (profile.monthlyDebtPayments ?? 0) / income : 0;
 
   if (income <= 0 || expenses <= 0 || expenses >= income) {
@@ -129,7 +135,7 @@ export function getInvestmentStreak(checkins: { month_start: string; invested: n
 export function getBadges(profile: FinancialProfile, investmentStreak = 0): Badge[] {
   const income = totalIncome(profile);
   const savingsRate = income > 0 ? ((income - profile.monthly_expenses) / income) * 100 : 0;
-  const emergencyMonths = profile.monthly_expenses > 0 ? profile.emergency_fund / profile.monthly_expenses : 0;
+  const emergencyMonths = lifestyleExpenses(profile) > 0 ? profile.emergency_fund / lifestyleExpenses(profile) : 0;
   const withdrawalRate = (profile.withdrawal_rate ?? 3.5) / 100;
   const target = targetExpenses(profile) > 0 && withdrawalRate > 0 ? (targetExpenses(profile) * 12) / withdrawalRate : 0;
   const progress = target > 0 ? Math.max(0, (profile.investableAssets ?? profile.fire_accessible_assets ?? profile.assets) / target) * 100 : 0;

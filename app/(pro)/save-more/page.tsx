@@ -73,7 +73,7 @@ export default function SaveMorePage() {
     const withdrawal = state.plan.withdrawal_rate;
     const accessible = Math.max(0, base.investableAssets ?? base.assets);
     // Idle money is measured in the bank: take-home minus spending minus bank investments.
-    const targetMonthly = flow.retirement_expenses ? targetExpenses(flow) : undefined; // planned retirement spending, if set
+    const targetMonthly = targetExpenses(flow); // the same spending the FIRE number is built on
     return { income, fromSalary, targetMonthly, expenses, invested, rate, realReturn, withdrawal, accessible, idle: idleMoney(flow.monthly_income, expenses, invested) };
   }, [state]);
 

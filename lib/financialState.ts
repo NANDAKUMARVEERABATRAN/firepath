@@ -96,6 +96,7 @@ export async function loadFinancialState(supabase: SupabaseClient, userId: strin
       currency: data.currency,
       withdrawal_rate: plan.withdrawal_rate,
       retirement_expenses: plan.retirement_expenses ?? null,
+      lifestyle_expenses: Number(data.monthly_expenses ?? 0),
     };
   }
 

@@ -1,4 +1,4 @@
-import { getFireScore, totalIncome, type FinancialProfile } from "./fireScore.ts";
+import { getFireScore, lifestyleExpenses, totalIncome, type FinancialProfile } from "./fireScore.ts";
 
 /**
  * The Freedom Path: an ordered set of levels that turns the FIRE journey into a game.
@@ -255,7 +255,7 @@ export type FreedomMetrics = {
 export function getFreedomMetrics(profile: FinancialProfile, options: PathOptions = {}): FreedomMetrics {
   const score = getFireScore(profile);
   const accessible = Math.max(0, profile.investableAssets ?? profile.fire_accessible_assets ?? profile.assets);
-  const expenses = Math.max(0, profile.monthly_expenses);
+  const expenses = lifestyleExpenses(profile); // steady lifestyle spending, same basis as the FIRE number
   const realRate = (options.expectedReturn ?? 10) - (options.inflation ?? 6);
   const years = yearsToTarget(accessible, profile.monthly_investment, score.fireTarget, realRate);
   // Suggested boost: ~10% of income, rounded to a friendly figure, minimum 1,000.

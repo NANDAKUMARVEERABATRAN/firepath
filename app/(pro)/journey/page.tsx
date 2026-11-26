@@ -17,7 +17,7 @@ import QuickSetup from "@/components/game/QuickSetup";
 import QuickLog from "@/components/forms/QuickLog";
 import { createClient } from "@/lib/supabase/client";
 import { loadFinancialState, formatMoney, getPortfolioMix, type FinancialState } from "@/lib/financialState";
-import { getBadges, getFireScore, getInvestmentStreak, totalIncome } from "@/lib/fireScore";
+import { getBadges, getFireScore, getInvestmentStreak, targetExpenses, totalIncome } from "@/lib/fireScore";
 import { getCurrentLevel, getFreedomMetrics, getFreedomPath, getMotivation, getRank, getXp, PATH_LEVELS, RANKS, sipForYears } from "@/lib/freedomPath";
 import { analyzeGoal, goalCategories, statusLabel } from "@/lib/goals";
 import { getLessonOfDay, lessons as allLessons } from "@/lib/wisdom";
@@ -254,6 +254,7 @@ export default function JourneyPage() {
         <article><span>Estimated freedom</span><strong>{game.metrics.yearsToFire === null ? "60+ yrs" : game.metrics.yearsToFire === 0 ? "Now!" : `${game.metrics.yearsToFire.toFixed(1)} yrs`}</strong><small>{game.metrics.fireAge ? `Around age ${game.metrics.fireAge} at today’s pace` : "Increase monthly investing to set a date"}</small></article>
         <article className="boost"><span>Your power move</span><strong>+{money(game.metrics.boostAmount)}/mo</strong><small>{game.metrics.yearsSavedByBoost !== null && game.metrics.yearsSavedByBoost > 0 ? `could bring freedom ~${game.metrics.yearsSavedByBoost.toFixed(1)} years sooner` : "invested monthly could start your FIRE clock"}</small></article>
       </section>
+      <p className="journey-note tm-basis">🎯 Your FIRE number = {money(targetExpenses(game.profile))}/month {state?.plan.retirement_expenses ? "(your planned retirement spending)" : "(your usual spending, from your profile)"} × 12 ÷ {state?.plan.withdrawal_rate}% = <b>{money(game.metrics.fireTarget)}</b> in today’s money. <Link href="/plan">Change it in your FIRE plan</Link> or update your spending in <Link href="/profile">Profile</Link>.</p>
       <p className="journey-note">Estimates use a {state?.plan.expected_return}% return and {state?.plan.inflation_rate}% inflation (real growth {((state?.plan.expected_return ?? 10) - (state?.plan.inflation_rate ?? 6)).toFixed(1)}%) in today’s money. Change them in your <Link href="/plan">FIRE plan</Link>. Illustrative only — not a guarantee or investment advice.</p>
 
       {state && <ProgressHistory snapshots={state.snapshots} />}
