@@ -7,11 +7,11 @@ const input = { fireProgress: 27, rankName: "Wealth Builder", rankNumber: 6, str
 test("milestones pick the right thresholds and sort by impressiveness", () => {
   const list = getMilestones(input);
   const ids = list.map(m => m.id);
-  assert.ok(ids.includes("fire-25"));
-  assert.ok(ids.includes("freedom-24"));
+  assert.ok(ids.includes("fire-27")); // real value, not a 25% step
+  assert.ok(ids.includes("freedom-24")); // 30 months → 2 full years
   assert.ok(ids.includes("streak-6"));
   assert.ok(ids.includes("levels-6"));
-  assert.equal(list[0].id, "fire-25");
+  assert.equal(list[0].id, "fire-27");
   for (let i = 1; i < list.length; i += 1) assert.ok(list[i - 1].weight >= list[i].weight);
   assert.equal(getMilestones({ ...input, fireProgress: 100 })[0].headline, "I’m financially independent!");
   assert.equal(getMilestones({ fireProgress: 1, rankName: "Rookie Saver", rankNumber: 1, streak: 0, levelsCleared: 1, freedomMonths: 0, lessons: 0 }).length, 0);
@@ -22,4 +22,11 @@ test("shared text never contains money amounts", () => {
     const text = shareText(m, "https://example.com");
     assert.doesNotMatch(text, /₹|AED|lakh|crore|\d{1,3}(,\d{2,3})+/, m.id);
   }
+});
+
+test("share cards match the numbers on Home (147 months → 12 years, 42.9% → 42%)", () => {
+  const list = getMilestones({ ...input, fireProgress: 42.9, freedomMonths: 147.1 });
+  assert.ok(list.some(m => m.headline === "I already own 12 years of freedom"));
+  assert.ok(list.some(m => m.headline === "I’m 42% of the way to financial freedom"));
+  assert.ok(getMilestones({ ...input, freedomMonths: 8.4 }).some(m => m.headline === "I already own 8 months of freedom"));
 });

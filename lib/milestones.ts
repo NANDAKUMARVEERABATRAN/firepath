@@ -19,10 +19,12 @@ export type MilestoneInput = {
 
 export function getMilestones(m: MilestoneInput): Milestone[] {
   const list: Milestone[] = [];
-  const fire = [100, 75, 50, 25, 10, 5].find(threshold => m.fireProgress >= threshold);
+  // Use the real numbers (rounded down, never up) so the card always matches Home.
+  const fire = m.fireProgress >= 100 ? 100 : m.fireProgress >= 5 ? Math.floor(m.fireProgress) : 0;
   if (fire) list.push({ id: `fire-${fire}`, emoji: fire === 100 ? "🏆" : "🔥", headline: fire === 100 ? "I’m financially independent!" : `I’m ${fire}% of the way to financial freedom`, sub: fire === 100 ? "Work is now optional." : "One step at a time, on my FIRE path.", progress: Math.min(100, m.fireProgress), weight: fire * 3 });
-  const freedom = [60, 24, 12, 6].find(threshold => m.freedomMonths >= threshold);
-  if (freedom) list.push({ id: `freedom-${freedom}`, emoji: "⏳", headline: freedom >= 12 ? `I already own ${Math.floor(freedom / 12)} year${freedom >= 24 ? "s" : ""} of freedom` : "I already own 6 months of freedom", sub: "My investments could cover my life for that long.", weight: freedom * 2 });
+  const years = Math.floor(m.freedomMonths / 12);
+  const freedom = years >= 1 ? years * 12 : m.freedomMonths >= 6 ? Math.floor(m.freedomMonths) : 0;
+  if (freedom) list.push({ id: `freedom-${freedom}`, emoji: "⏳", headline: years >= 1 ? `I already own ${years} year${years === 1 ? "" : "s"} of freedom` : `I already own ${freedom} months of freedom`, sub: "My investments could cover my life for that long.", weight: Math.min(freedom, 120) * 2 });
   const streak = [24, 12, 6, 3].find(threshold => m.streak >= threshold);
   if (streak) list.push({ id: `streak-${streak}`, emoji: "🔥", headline: `${streak}-month investing streak`, sub: "Consistency beats intensity.", weight: streak * 6 });
   if (m.levelsCleared >= 3) list.push({ id: `levels-${m.levelsCleared}`, emoji: "🗺️", headline: m.levelsCleared >= PATH_LEVELS ? "I reached Fat FIRE on my Freedom Path" : `Level ${m.levelsCleared} of ${PATH_LEVELS} cleared on my Freedom Path`, sub: "From money map to financial independence.", progress: (m.levelsCleared / PATH_LEVELS) * 100, weight: m.levelsCleared * 8 });
