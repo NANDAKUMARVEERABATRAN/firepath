@@ -14,6 +14,7 @@ import { getProgressSummary, monthStartOf, saveSnapshot } from "@/lib/progress";
 import ShareMilestone from "@/components/game/ShareMilestone";
 import { getMilestones } from "@/lib/milestones";
 import QuickSetup from "@/components/game/QuickSetup";
+import QuickLog from "@/components/forms/QuickLog";
 import { createClient } from "@/lib/supabase/client";
 import { loadFinancialState, formatMoney, getPortfolioMix, type FinancialState } from "@/lib/financialState";
 import { getBadges, getFireScore, getInvestmentStreak, totalIncome } from "@/lib/fireScore";
@@ -184,6 +185,8 @@ export default function JourneyPage() {
       {message && message !== "signin" && <p className="profile-status" role="status">{message}</p>}
 
       <div className="journey-greeting"><h1>{greeting()}{firstName ? `, ${firstName}` : ""} 👋</h1><p>{game.current ? <>Today’s focus: <b>{game.current.title}</b></> : "Fat FIRE reached. Keep it that way."}</p></div>
+
+      <QuickLog compact onSaved={() => { setLoading(true); setReload(value => value + 1); }} />
 
       {(() => {
         const why = state?.why;

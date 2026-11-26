@@ -6,6 +6,7 @@ import { Bot, CalendarDays, CircleDollarSign, PiggyBank, Trash2, Upload } from "
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import VoiceEntry from "@/components/forms/VoiceEntry";
+import QuickLog from "@/components/forms/QuickLog";
 import { createClient } from "@/lib/supabase/client";
 import { parseSpokenAmount } from "@/lib/voiceForms";
 import { createGuidedTargets, getBudgetReview } from "@/lib/budgetGuide";
@@ -218,6 +219,7 @@ export default function BudgetPage() {
 
   return <><Header /><main className="budget-page container">
     <div className="profile-heading"><p className="eyebrow"><PiggyBank size={14} /> MONTHLY BUDGET</p><h1>Give every month a plan.</h1><p>Set flexible category targets and record spending as you go. AI suggestions are drafts for you to review.</p></div>
+    {!loading && signedIn && <QuickLog onSaved={() => void load()} />}
     {!loading && signedIn && <Link href="/save-more" className="saver-strip tone-ok budget-save-link"><span className="saver-strip-emoji">✂️</span><div><small>LEAK HUNTER</small><strong>Find money to invest</strong><span>Tap the spending leaks you can plug and see how much sooner you could be free.</span></div></Link>}
     {loading ? <p className="profile-status">Loading your budget…</p> : !signedIn ? <section className="profile-card"><p>Sign in to create a private monthly budget.</p><Link href="/" className="button button-primary">Return home to sign in</Link></section> : <>
       <div className="budget-toolbar"><label className="profile-field"><span>Budget month</span><input type="month" value={month.slice(0, 7)} onChange={event => event.target.value && setMonth(`${event.target.value}-01`)} /></label><p>Currency: <strong>{currency}</strong></p></div>

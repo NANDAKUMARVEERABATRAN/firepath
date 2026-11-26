@@ -8,6 +8,7 @@ import Footer from "@/components/layout/Footer";
 import VoiceEntry from "@/components/forms/VoiceEntry";
 import StepFlow, { MoneyInput, type Step } from "@/components/forms/StepFlow";
 import Celebration from "@/components/game/Celebration";
+import { QUICKLOG_CHECKIN_KEY } from "@/components/forms/QuickLog";
 import { parseLabeledAmount } from "@/lib/voiceForms";
 import { getInvestmentStreak } from "@/lib/fireScore";
 import { rupees } from "@/lib/format";
@@ -20,7 +21,7 @@ const num = (value: string) => Math.max(0, Number(value || 0));
 
 export default function CheckInPage() {
   const [values, setValues] = useState<Checkin>(empty);
-  const [source, setSource] = useState<"this-month" | "last-month" | "profile" | "none">("none");
+  const [source, setSource] = useState<"this-month" | "last-month" | "profile" | "quicklog" | "none">("none");
   const [month, setMonth] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -68,6 +69,15 @@ export default function CheckInPage() {
           setValues({ income: String(p.monthly_income ?? ""), investment_income: String(p.monthly_investment_income ?? 0), expenses: String(p.monthly_expenses ?? ""), invested: String(p.monthly_investment ?? ""), debt_paid: emis ? String(emis) : "0", salary_pf: String(p.monthly_salary_pf ?? 0), salary_pension: String(p.monthly_salary_pension ?? 0), note: "" });
           setSource("profile");
         }
+        // Numbers from AI quick log (Home/Budget) fill in on top, for the person to confirm.
+        try {
+          const raw = window.sessionStorage.getItem(QUICKLOG_CHECKIN_KEY);
+          if (raw) {
+            window.sessionStorage.removeItem(QUICKLOG_CHECKIN_KEY);
+            const saved = JSON.parse(raw) as { month: string; fields: Record<string, number> };
+            if (saved.month === currentMonth) { setValues(current => ({ ...current, ...Object.fromEntries(Object.entries(saved.fields).filter(([k]) => k in current).map(([k, v]) => [k, String(v)])) })); setSource("quicklog"); }
+          }
+        } catch { /* storage unavailable */ }
       } catch (error) {
         if (active) setMessage(error instanceof Error ? error.message : "Could not load your check-in.");
       } finally { if (active) setLoading(false); }
@@ -115,7 +125,7 @@ export default function CheckInPage() {
   const earned = income + fromSalary; // take-home + retirement savings deducted from salary
   const uae = country.code === "AE";
   const salaryLabels = uae ? { pf: "Workplace savings (e.g. DEWS)", pension: "Pension contribution (e.g. GPSSA)" } : { pf: "EPF / VPF (your share + employer’s)", pension: "NPS (your share + employer’s)" };
-  const prefillNote = source === "last-month" ? "Pre-filled from last month — just confirm or change." : source === "profile" ? "Pre-filled from your profile — just confirm or change." : source === "this-month" ? `You already logged ${monthName}. Update anything that changed.` : null;
+  const prefillNote = source === "quicklog" ? "✨ Filled from your quick log (the rest from last month). Check each step and save." : source === "last-month" ? "Pre-filled from last month — just confirm or change." : source === "profile" ? "Pre-filled from your profile — just confirm or change." : source === "this-month" ? `You already logged ${monthName}. Update anything that changed.` : null;
   const lastStreak = getInvestmentStreak(history.filter(row => row.month_start !== month));
 
   const steps: Step[] = [

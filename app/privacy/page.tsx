@@ -37,7 +37,7 @@ export default function Privacy() {
       <li><b>Supabase</b>: database and sign-in hosting.</li>
       <li><b>Vercel</b>: website hosting.</li>
       <li><b>Google</b>: sign-in.</li>
-      <li><b>OpenAI</b>: only when you tap “AI budget suggestions”. We send your monthly income, fixed costs, savings target and currency. We don’t send your name, email or other details.</li>
+      <li><b>OpenAI</b>: only when you use an AI feature. For “AI budget suggestions” we send your monthly income, fixed costs, savings target and currency. For “Tell FIREpath in one line” we send the sentence you typed or spoke, after removing long numbers (account, card and phone numbers), PAN and email addresses. We don’t send your name or email, and we ask OpenAI not to store the request.</li>
       <li><b>Our payment provider</b> (for example Razorpay, or Google Play billing in the Android app), once paid plans launch.</li>
     </ul>
     <p>We may also disclose information if required by law or to protect users’ safety. We never sell or rent your personal data, and we don’t share it with advertisers.</p>
