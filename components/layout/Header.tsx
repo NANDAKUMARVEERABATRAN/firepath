@@ -1,48 +1,38 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { usePathname } from "next/navigation";
-import { BookOpen, ChevronDown, Flame, Menu, Plus, Target, TrendingUp, Wallet, X } from "lucide-react";
+import { Flame, Menu, PiggyBank, Plus, TrendingUp, UserRound, Wallet, X } from "lucide-react";
 import AuthButton from "@/components/auth/AuthButton";
-import { PRICING } from "@/lib/subscription";
 import { COUNTRIES, ENABLED_COUNTRIES } from "@/lib/country";
 import { useCountry } from "@/lib/useCountry";
 
-const primary = [
-  { href: "/journey", label: "Home", icon: Flame },
-  { href: "/goals", label: "Goals", icon: Target },
-  { href: "/accounts", label: "Portfolio", icon: Wallet },
-  { href: "/plan", label: "FIRE plan", icon: TrendingUp },
+/**
+ * App navigation in 4 hubs. The phone bottom bar shows the hubs; each hub's pages appear as tabs
+ * under the header, so every page is at most two taps away.
+ */
+const HUBS = [
+  { id: "home", label: "Home", icon: Flame, href: "/journey", pages: [
+    { href: "/journey", label: "Overview" }, { href: "/dashboard", label: "FIRE score" }, { href: "/report", label: "Monthly report" }, { href: "/learn", label: "Learn" },
+  ] },
+  { id: "money", label: "Money", icon: PiggyBank, href: "/budget", pages: [
+    { href: "/budget", label: "Budget" }, { href: "/trends", label: "Trends" }, { href: "/save-more", label: "Save more" }, { href: "/check-in", label: "Log month" },
+  ] },
+  { id: "wealth", label: "Wealth", icon: Wallet, href: "/accounts", pages: [
+    { href: "/accounts", label: "Portfolio" }, { href: "/goals", label: "Goals" }, { href: "/plan", label: "FIRE plan" },
+  ] },
+  { id: "me", label: "Me", icon: UserRound, href: "/profile", pages: [
+    { href: "/profile", label: "Profile" }, { href: "/feedback", label: "Ideas & rewards" }, { href: "/account", label: "Subscription" }, { href: "/pricing", label: "Pro plan" },
+  ] },
 ];
-const more = [
-  { href: "/trends", label: "📊 Money trends", hint: "Your spending, investing and savings rate over time" },
-  { href: "/save-more", label: "✂️ Save more", hint: "Raise your savings rate, hunt spending leaks" },
-  { href: "/report", label: "📬 Monthly report", hint: "Your month in money, and what to focus on next" },
-  { href: "/check-in", label: "Monthly check-in", hint: "Log income, spending, investing" },
-  { href: "/dashboard", label: "FIRE score", hint: "Your 100-point breakdown & badges" },
-  { href: "/budget", label: "Budget", hint: "Targets and spending" },
-  { href: "/learn", label: "Money principles", hint: "Ideas from the best books" },
-  { href: "/profile", label: "Profile", hint: "Your why, income, savings, insurance" },
-  { href: "/feedback", label: "💡 Ideas & rewards", hint: "Suggest changes, earn points off your bill" },
-  { href: "/account", label: "Subscription", hint: "Your plan, renewal and billing" },
-  { href: "/pricing", label: "👑 Pro plan", hint: `${PRICING.trialDays} days free · then a small monthly or yearly fee` },
-];
+const HUB_HINTS: Record<string, string> = { home: "Your progress, score and lessons", money: "Budget, spending and saving this month", wealth: "What you own, your goals and FIRE plan", me: "Profile, rewards and subscription" };
 
 export default function Header() {
   const [open, setOpen] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
   const pathname = usePathname();
   const { country, setCountry } = useCountry();
-  const moreRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const close = (event: MouseEvent) => { if (moreRef.current && !moreRef.current.contains(event.target as Node)) setMoreOpen(false); };
-    document.addEventListener("click", close);
-    return () => document.removeEventListener("click", close);
-  }, []);
-
   const isLanding = pathname === "/";
-  const moreActive = more.some(item => item.href === pathname);
+  const hub = HUBS.find(h => h.pages.some(p => p.href === pathname)) ?? null;
 
   return (
     <>
@@ -53,13 +43,11 @@ export default function Header() {
             <span>FIRE<span className="brand-accent">path</span></span>
           </a>
           <nav className={open ? "nav-links nav-open" : "nav-links"} aria-label="Main">
-            {primary.map(item => <a key={item.href} href={item.href} className={pathname === item.href ? "active" : undefined} onClick={() => setOpen(false)}>{item.label}</a>)}
-            <div className={`nav-more${moreOpen ? " open" : ""}`} ref={moreRef}>
-              <button type="button" className={moreActive ? "active" : undefined} aria-expanded={moreOpen} onClick={() => setMoreOpen(value => !value)}>More <ChevronDown size={14} /></button>
-              <div className="nav-more-menu" role="menu">
-                {more.map(item => <a key={item.href} href={item.href} role="menuitem" className={pathname === item.href ? "active" : undefined} onClick={() => { setOpen(false); setMoreOpen(false); }}><strong>{item.label}</strong><small>{item.hint}</small></a>)}
-              </div>
-            </div>
+            {!open && HUBS.map(h => <a key={h.id} href={h.href} className={hub?.id === h.id ? "active" : undefined}>{h.label}</a>)}
+            {open && <div className="nav-groups">{HUBS.map(h => <div key={h.id} className="nav-group">
+              <strong>{h.label} <small>{HUB_HINTS[h.id]}</small></strong>
+              <div>{h.pages.map(p => <a key={p.href} href={p.href} className={pathname === p.href ? "active" : undefined} onClick={() => setOpen(false)}>{p.label}</a>)}</div>
+            </div>)}</div>}
           </nav>
           <div className="nav-actions">
             {ENABLED_COUNTRIES.length > 1 && <div className="country-switch" role="group" aria-label="Country">
@@ -68,18 +56,19 @@ export default function Header() {
             <a href="/check-in" className="nav-log"><Plus size={15} /> Log month</a>
             <AuthButton />
           </div>
-          <button className="menu-toggle" aria-label="Toggle navigation" onClick={() => setOpen(!open)}>
+          <button className="menu-toggle" aria-label={open ? "Close menu" : "Open menu"} aria-expanded={open} onClick={() => setOpen(!open)}>
             {open ? <X size={22} /> : <Menu size={22} />}
           </button>
         </div>
       </header>
+      {hub && <nav className="hub-tabs" aria-label={`${hub.label} pages`}><div className="container">
+        {hub.pages.map(p => <a key={p.href} href={p.href} className={pathname === p.href ? "active" : undefined} aria-current={pathname === p.href ? "page" : undefined}>{p.label}</a>)}
+      </div></nav>}
       {!isLanding && (
         <nav className="tab-bar" aria-label="App">
-          <a href="/journey" className={pathname === "/journey" ? "active" : undefined}><Flame size={20} /><span>Home</span></a>
-          <a href="/goals" className={pathname === "/goals" ? "active" : undefined}><Target size={20} /><span>Goals</span></a>
+          {HUBS.slice(0, 2).map(h => <a key={h.id} href={h.href} className={hub?.id === h.id ? "active" : undefined}><h.icon size={20} /><span>{h.label}</span></a>)}
           <a href="/check-in" className="tab-log" aria-label="Log this month"><span className="tab-log-btn"><Plus size={24} /></span><span>Log</span></a>
-          <a href="/accounts" className={pathname === "/accounts" ? "active" : undefined}><Wallet size={20} /><span>Portfolio</span></a>
-          <a href="/learn" className={pathname === "/learn" ? "active" : undefined}><BookOpen size={20} /><span>Learn</span></a>
+          {HUBS.slice(2).map(h => <a key={h.id} href={h.href} className={hub?.id === h.id ? "active" : undefined}><h.icon size={20} /><span>{h.label}</span></a>)}
         </nav>
       )}
     </>

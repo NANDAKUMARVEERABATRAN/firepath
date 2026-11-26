@@ -580,3 +580,18 @@
 .trends-link{margin:16px 0 0}
 .tr-chart svg{max-width:100%}
 @media(max-width:600px){.tr-tip{position:static;min-width:0;margin-top:8px;box-shadow:none;background:#f7f9fb}.tr-card{padding:16px 14px 12px}}
+
+/* Navigation hubs: page tabs under the header + grouped phone menu */
+.hub-tabs{background:#fff;border-bottom:1px solid #edf1f3;position:sticky;top:78px;z-index:15}
+.hub-tabs .container{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:8px 0}
+.hub-tabs .container::-webkit-scrollbar{display:none}
+.hub-tabs a{flex:none;padding:8px 14px;border-radius:20px;font-size:13px;font-weight:700;color:#556575;white-space:nowrap}
+.hub-tabs a:hover{background:#f3f6f8;color:var(--navy)}
+.hub-tabs a.active{background:var(--pale);color:var(--green-dark)}
+.nav-groups{display:flex;flex-direction:column;gap:16px;width:100%}
+.nav-group>strong{display:block;font-family:Manrope,sans-serif;color:var(--navy);font-size:15px;margin-bottom:6px}
+.nav-group>strong small{font-family:'DM Sans',sans-serif;font-weight:500;font-size:12px;color:#8896a3;margin-left:4px}
+.nav-group>div{display:flex;flex-wrap:wrap;gap:6px}
+.nav-group a{padding:8px 12px;border-radius:10px;background:#f3f6f8;font-size:13px;font-weight:600;color:#41515f}
+.nav-group a.active{background:var(--pale);color:var(--green-dark)}
+@media(max-width:700px){.hub-tabs{top:68px}.hub-tabs a{padding:7px 12px}}
