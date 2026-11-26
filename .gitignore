@@ -1,0 +1,19 @@
+node_modules
+.next
+out
+.vercel
+*.tsbuildinfo
+
+# Secrets — never commit real keys (.env.example is the safe template)
+.env
+.env.*
+!.env.example
+*.pem
+
+# Android signing keys for the Google Play build
+*.keystore
+*.jks
+android/
+
+.DS_Store
+Thumbs.db
