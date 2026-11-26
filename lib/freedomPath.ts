@@ -110,7 +110,7 @@ export function getFreedomPath(profile: FinancialProfile, options: PathOptions =
       id: "cash-flow", title: "Spend less than you earn", book: "The Psychology of Money",
       why: "Wealth is the income you don’t spend. A positive gap every month is the fuel for everything that follows.",
       howToClear: "Get your monthly savings rate above 10%. Track one month in the budget to find easy leaks.",
-      href: "/budget", cleared: score.savingsRate >= 10, progress: ratio(score.savingsRate, 10), progressLabel: `${score.savingsRate.toFixed(0)}% saved (goal 10%)`,
+      href: "/month", cleared: score.savingsRate >= 10, progress: ratio(score.savingsRate, 10), progressLabel: `${score.savingsRate.toFixed(0)}% saved (goal 10%)`,
     },
     {
       id: "starter-buffer", title: "Starter safety net", book: "The Psychology of Money",
@@ -145,7 +145,7 @@ export function getFreedomPath(profile: FinancialProfile, options: PathOptions =
       howToClear: uae
         ? "Invest at least 20% of your monthly income automatically — set up a monthly transfer to your investment account on payday."
         : "Invest at least 20% of your monthly income automatically, for example with a monthly SIP.",
-      href: "/check-in", cleared: investRate >= 0.2, progress: ratio(investRate, 0.2), progressLabel: `${(investRate * 100).toFixed(0)}% invested (goal 20%)${investRate * 100 > score.savingsRate + 2 ? " · more than you keep after spending: are all expenses logged?" : ""}`,
+      href: "/month", cleared: investRate >= 0.2, progress: ratio(investRate, 0.2), progressLabel: `${(investRate * 100).toFixed(0)}% invested (goal 20%)${investRate * 100 > score.savingsRate + 2 ? " · more than you keep after spending: are all expenses logged?" : ""}`,
     },
     {
       id: "coast", title: "Coast FIRE", book: "The Simple Path to Wealth",

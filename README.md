@@ -129,6 +129,7 @@ npm run start
   - Daily book lesson with an Indian example, quiz and micro-challenge (`lib/wisdom.ts`)
   - Goals snapshot, portfolio mix, and badges
 - **Money trends (`/trends`)** — where each month's money went (invested, EPF/NPS, spent, EMIs, left over), savings rate over time with saver-level reference lines, spending by budget category vs the previous period; months/all/yearly views, hover/tap details and a table view (`lib/trends.ts`)
+- **This month (`/month`)** — one page for the month: money in (take-home, EPF/NPS), spending as a single total or by category (a category = its entries + an optional typed "Monthly total" entry, so nothing double-counts; `lib/monthLog.ts`), optional category limits, investing and EMIs, plus AI one-line logging and CSV import. `/check-in` and `/budget` redirect here.
 - **Goals (`/goals`)** — inflation-adjusted life goals with required monthly SIP, on-track status, quick top-ups and achievement celebrations (`lib/goals.ts`)
 - Responsive marketing homepage
 - Light design system and mobile navigation

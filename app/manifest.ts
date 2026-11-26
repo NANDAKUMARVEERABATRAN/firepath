@@ -22,7 +22,7 @@ export default function manifest(): MetadataRoute.Manifest {
       { src: "/icons/maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
     shortcuts: [
-      { name: "Log this month", short_name: "Check-in", url: "/check-in?source=shortcut", icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }] },
+      { name: "Log this month", short_name: "Check-in", url: "/month?source=shortcut", icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }] },
       { name: "My goals", short_name: "Goals", url: "/goals?source=shortcut", icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }] },
     ],
   };

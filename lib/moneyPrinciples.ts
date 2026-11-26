@@ -16,7 +16,7 @@ export const moneyPrinciples = [
     scoreAreas: ["Spending & saving", "Regular investing"],
     idea: "A plan depends on behavior as well as arithmetic. A repeatable savings habit can serve you better than a target that repeatedly gets abandoned.",
     action: "Track a normal month, then choose one realistic improvement to practice.",
-    href: "/check-in",
+    href: "/month",
     link: "Make a monthly check-in",
   },
   {
@@ -46,7 +46,7 @@ export const moneyPrinciples = [
     scoreAreas: ["Regular investing"],
     idea: "A written approach to saving, investing, and reviewing assumptions can help keep short-term market moves from rewriting a long-term goal.",
     action: "Choose a review schedule and record contributions consistently.",
-    href: "/check-in",
+    href: "/month",
     link: "Track your monthly progress",
   },
   {
@@ -96,7 +96,7 @@ export const moneyPrinciples = [
     scoreAreas: ["Regular investing", "Spending & saving"],
     idea: "When investing and saving happen automatically on payday, progress no longer depends on willpower each month.",
     action: "Schedule your monthly investment for the day after salary arrives.",
-    href: "/check-in",
+    href: "/month",
     link: "Log what you invest",
   },
   {
@@ -106,7 +106,7 @@ export const moneyPrinciples = [
     scoreAreas: ["Spending & saving"],
     idea: "A plan you enjoy is a plan you keep. Protect spending that truly matters to you and cut what doesn’t.",
     action: "Review your budget categories and pick one to shrink.",
-    href: "/budget",
+    href: "/month",
     link: "Open your budget",
   },
   {
@@ -146,7 +146,7 @@ export const moneyPrinciples = [
     scoreAreas: ["Regular investing"],
     idea: "Missing a handful of the market’s best days can sharply reduce long-term returns. Staying invested beats guessing.",
     action: "Write a rule for what you’ll do when markets fall — and keep investing.",
-    href: "/check-in",
+    href: "/month",
     link: "Keep your streak going",
   },
   {
@@ -156,7 +156,7 @@ export const moneyPrinciples = [
     scoreAreas: ["Regular investing", "Spending & saving"],
     idea: "Small habits done consistently compound — a monthly check-in and a yearly step-up in investing add up over decades.",
     action: "Log this month in 30 seconds and raise your investment a little each year.",
-    href: "/check-in",
+    href: "/month",
     link: "Log this month",
   },
   {

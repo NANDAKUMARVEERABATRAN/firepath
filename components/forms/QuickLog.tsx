@@ -19,7 +19,7 @@ const monthStart = (date = today()) => `${date.slice(0, 7)}-01`;
 type SpeechCtor = new () => { lang: string; interimResults: boolean; continuous: boolean; start: () => void; stop: () => void; onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null; onend: (() => void) | null; onerror: (() => void) | null };
 
 /** "Tell FIREpath in one line": AI turns a sentence into check-in fields, spending entries and balances to review. */
-export default function QuickLog({ compact = false, onSaved }: { compact?: boolean; onSaved?: () => void }) {
+export default function QuickLog({ compact = false, onSaved, onCheckinFields }: { compact?: boolean; onSaved?: () => void; /** On the This month page: put check-in numbers into the form instead of saving them. */ onCheckinFields?: (fields: Partial<Record<keyof CheckinFields, number>>) => void }) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -100,7 +100,8 @@ export default function QuickLog({ compact = false, onSaved }: { compact?: boole
       const { supabase, userId } = ctx;
       const done: string[] = [];
       const fields = Object.fromEntries(checkinFields.filter(([k]) => pickCheckin[k]));
-      if (Object.keys(fields).length && checkinExists) {
+      if (Object.keys(fields).length && onCheckinFields) { onCheckinFields(fields as Partial<Record<keyof CheckinFields, number>>); done.push("the month’s numbers (filled in below, save the month to keep them)"); }
+      else if (Object.keys(fields).length && checkinExists) {
         const { error: e } = await supabase.from("monthly_checkins").update({ ...fields, updated_at: new Date().toISOString() }).eq("user_id", userId).eq("month_start", monthStart());
         if (e) throw new Error(/salary_p/.test(e.message) ? "Run supabase/migrations/202611260026_salary_savings.sql in Supabase to save EPF/NPS." : e.message);
         done.push(`${Object.keys(fields).length} check-in item${Object.keys(fields).length === 1 ? "" : "s"}`);
@@ -120,9 +121,9 @@ export default function QuickLog({ compact = false, onSaved }: { compact?: boole
       }
       if (holdingsSaved) done.push(`${holdingsSaved} portfolio balance${holdingsSaved === 1 ? "" : "s"}`);
       // No check-in yet this month: hand the numbers to Log month so the person confirms the full picture.
-      if (Object.keys(fields).length && !checkinExists) {
+      if (Object.keys(fields).length && !checkinExists && !onCheckinFields) {
         try { window.sessionStorage.setItem(QUICKLOG_CHECKIN_KEY, JSON.stringify({ month: monthStart(), fields })); } catch { /* storage unavailable */ }
-        window.location.href = "/check-in?from=quicklog";
+        window.location.href = "/month?from=quicklog";
         return;
       }
       setCelebrate({ title: "Logged ✨", detail: done.length ? `Saved ${done.join(", ")}. Your score and progress are updated.` : "Nothing was selected to save." });
@@ -153,7 +154,7 @@ export default function QuickLog({ compact = false, onSaved }: { compact?: boole
       {result.unclear.map(u => <p key={u} className="import-warning">🤔 {u}</p>)}
       {checkinFields.length > 0 && <div className="ql-block">
         <h3>This month’s check-in</h3>
-        {!checkinExists && <small className="ql-hint">You haven’t logged this month yet. We’ll open Log month with these filled in so you can confirm the rest.</small>}
+        {!checkinExists && !onCheckinFields && <small className="ql-hint">You haven’t logged this month yet. We’ll open This month with these filled in so you can confirm the rest.</small>}
         {checkinFields.map(([k, v]) => <label key={k} className="ql-row"><input type="checkbox" checked={Boolean(pickCheckin[k])} onChange={e => setPickCheckin(p => ({ ...p, [k]: e.target.checked }))} /><span>{CHECKIN_LABELS[k]}</span><b>{money(v)}</b>{checkinExists && <em>was {money(currentCheckin[k] ?? 0)}</em>}</label>)}
       </div>}
       {result.spending.length > 0 && <div className="ql-block">
@@ -175,7 +176,7 @@ export default function QuickLog({ compact = false, onSaved }: { compact?: boole
         </label>; })}
       </div>}
       <div className="quicklog-actions">
-        <button type="button" className="button button-primary" disabled={busy || !anyPicked} onClick={() => void save()}>{busy ? "Saving…" : checkinFields.some(([k]) => pickCheckin[k]) && !checkinExists ? "Save & finish Log month" : "Save"}</button>
+        <button type="button" className="button button-primary" disabled={busy || !anyPicked} onClick={() => void save()}>{busy ? "Saving…" : checkinFields.some(([k]) => pickCheckin[k]) && !checkinExists && !onCheckinFields ? "Save & finish the month" : "Save"}</button>
         <button type="button" className="text-link ql-cancel" onClick={() => { setResult(null); setError(""); }}>Edit text</button>
       </div>
     </div>}

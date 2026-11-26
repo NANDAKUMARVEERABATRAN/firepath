@@ -41,7 +41,7 @@ export default function ReportPage() {
   const focus = useMemo(() => {
     if (!state?.scoreProfile || !report) return [];
     const items: { emoji: string; text: string; href: string }[] = [];
-    if (!report.loggedThisMonth) items.push({ emoji: "🧾", text: "Log this month’s money (pre-filled, 30 seconds)", href: "/check-in" });
+    if (!report.loggedThisMonth) items.push({ emoji: "🧾", text: "Log this month’s money (pre-filled, 30 seconds)", href: "/month" });
     const level = getCurrentLevel(getFreedomPath(state.scoreProfile, { retirementAge: state.plan.retirement_age, expectedReturn: state.plan.expected_return, inflation: state.plan.inflation_rate }));
     if (level) items.push({ emoji: "🗺️", text: `Level ${level.level} · ${level.title}: ${level.howToClear}`, href: level.href });
     const behind = state.goals.filter(goal => !goal.completed_at).map(goal => ({ goal, a: analyzeGoal(goal) })).find(item => item.a.status === "behind");
@@ -75,7 +75,7 @@ export default function ReportPage() {
             <li><span>Spent</span><b>{money(report.checkin.expenses)}</b></li>
             <li><span>Invested</span><b>{money(report.checkin.invested)} · {report.checkin.investRate.toFixed(0)}% of income</b></li>
             <li><span>Saving rate</span><b>{report.checkin.savingsRate.toFixed(0)}%{report.previousCheckin ? ` (${report.checkin.savingsRate >= report.previousCheckin.savingsRate ? "▲" : "▼"} from ${report.previousCheckin.savingsRate.toFixed(0)}%)` : ""}</b></li>
-          </ul> : <p className="side-empty">No check-in yet. <Link href="/check-in">Log your month</Link> to see this section.</p>}
+          </ul> : <p className="side-empty">No check-in yet. <Link href="/month">Log your month</Link> to see this section.</p>}
         </div>
         <div className="report-box">
           <h3>🔥 Your habits</h3>

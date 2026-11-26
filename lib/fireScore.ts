@@ -80,7 +80,7 @@ export function getActionSteps(profile: FinancialProfile): ActionStep[] {
   const debtPaymentRate = income > 0 ? (profile.monthlyDebtPayments ?? 0) / income : 0;
 
   if (income <= 0 || expenses <= 0 || expenses >= income) {
-    actions.push({ title: "Understand this month’s cash flow", detail: "Record income and spending to see what is available after essential costs. Start with one month of actual numbers.", href: "/check-in", priority: "focus" });
+    actions.push({ title: "Understand this month’s cash flow", detail: "Record income and spending to see what is available after essential costs. Start with one month of actual numbers.", href: "/month", priority: "focus" });
   }
   if ((profile.highInterestDebt ?? 0) > 0) {
     actions.push({ title: "Review high-interest balances", detail: "Compare each balance, rate, and required payment. The app does not choose a payoff strategy or recommend a financial product.", href: "/accounts", priority: "focus" });
@@ -98,7 +98,7 @@ export function getActionSteps(profile: FinancialProfile): ActionStep[] {
     actions.push({ title: "Choose a repeatable investing habit", detail: "If your budget allows, decide what monthly amount feels sustainable and track it. This app does not suggest investments.", href: "/profile", priority: "build" });
   }
   if (actions.length === 0) {
-    actions.push({ title: "Keep your plan current", detail: "Update your monthly check-in and review your FIRE assumptions when your circumstances change.", href: "/check-in", priority: "build" });
+    actions.push({ title: "Keep your plan current", detail: "Update your monthly check-in and review your FIRE assumptions when your circumstances change.", href: "/month", priority: "build" });
   }
   return actions.slice(0, 4);
 }

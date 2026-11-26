@@ -222,7 +222,7 @@ export default function SaveMorePage() {
             : kept > 0 ? <p>💪 You kept <b>{money(kept)}/month</b> so far, {Math.round((kept / committed.monthly_total) * 100)}% of your pledge. Pick one leak to focus on this month.</p>
             : <p>This month got away from you, and that’s okay. Every month is a fresh start. Pick your easiest leak and try again.</p>}
         </div>
-        <Link href="/check-in" className="text-link">Log a month <ArrowRight size={14} /></Link>
+        <Link href="/month" className="text-link">Log a month <ArrowRight size={14} /></Link>
       </section>}
 
       <section className="rate-table">

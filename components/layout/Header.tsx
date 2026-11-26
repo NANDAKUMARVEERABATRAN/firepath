@@ -15,8 +15,8 @@ const HUBS = [
   { id: "home", label: "Home", icon: Flame, href: "/journey", pages: [
     { href: "/journey", label: "Overview" }, { href: "/dashboard", label: "FIRE score" }, { href: "/report", label: "Monthly report" }, { href: "/learn", label: "Learn" },
   ] },
-  { id: "money", label: "Money", icon: PiggyBank, href: "/budget", pages: [
-    { href: "/budget", label: "Budget" }, { href: "/trends", label: "Trends" }, { href: "/save-more", label: "Save more" }, { href: "/check-in", label: "Log month" },
+  { id: "money", label: "Money", icon: PiggyBank, href: "/month", pages: [
+    { href: "/month", label: "This month" }, { href: "/trends", label: "Trends" }, { href: "/save-more", label: "Save more" },
   ] },
   { id: "wealth", label: "Wealth", icon: Wallet, href: "/accounts", pages: [
     { href: "/accounts", label: "Portfolio" }, { href: "/goals", label: "Goals" }, { href: "/plan", label: "FIRE plan" },
@@ -25,7 +25,7 @@ const HUBS = [
     { href: "/profile", label: "Profile" }, { href: "/feedback", label: "Ideas & rewards" }, { href: "/account", label: "Subscription" }, { href: "/pricing", label: "Pro plan" },
   ] },
 ];
-const HUB_HINTS: Record<string, string> = { home: "Your progress, score and lessons", money: "Budget, spending and saving this month", wealth: "What you own, your goals and FIRE plan", me: "Profile, rewards and subscription" };
+const HUB_HINTS: Record<string, string> = { home: "Your progress, score and lessons", money: "This month, trends and saving", wealth: "What you own, your goals and FIRE plan", me: "Profile, rewards and subscription" };
 
 export default function Header() {
   const [open, setOpen] = useState(false);
@@ -53,7 +53,7 @@ export default function Header() {
             {ENABLED_COUNTRIES.length > 1 && <div className="country-switch" role="group" aria-label="Country">
               {ENABLED_COUNTRIES.map(code => <button key={code} type="button" aria-pressed={country.code === code} className={country.code === code ? "on" : ""} onClick={() => setCountry(code)} title={`${COUNTRIES[code].name} · ${COUNTRIES[code].currency}`}><b>{COUNTRIES[code].code === "IN" ? "₹" : "AED"}</b><span>{COUNTRIES[code].name}</span></button>)}
             </div>}
-            <a href="/check-in" className="nav-log"><Plus size={15} /> Log month</a>
+            <a href="/month" className="nav-log"><Plus size={15} /> Log month</a>
             <AuthButton />
           </div>
           <button className="menu-toggle" aria-label={open ? "Close menu" : "Open menu"} aria-expanded={open} onClick={() => setOpen(!open)}>
@@ -67,7 +67,7 @@ export default function Header() {
       {!isLanding && (
         <nav className="tab-bar" aria-label="App">
           {HUBS.slice(0, 2).map(h => <a key={h.id} href={h.href} className={hub?.id === h.id ? "active" : undefined}><h.icon size={20} /><span>{h.label}</span></a>)}
-          <a href="/check-in" className="tab-log" aria-label="Log this month"><span className="tab-log-btn"><Plus size={24} /></span><span>Log</span></a>
+          <a href="/month" className="tab-log" aria-label="Log this month"><span className="tab-log-btn"><Plus size={24} /></span><span>Log</span></a>
           {HUBS.slice(2).map(h => <a key={h.id} href={h.href} className={hub?.id === h.id ? "active" : undefined}><h.icon size={20} /><span>{h.label}</span></a>)}
         </nav>
       )}

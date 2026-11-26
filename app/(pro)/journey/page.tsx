@@ -156,7 +156,7 @@ export default function JourneyPage() {
   const streakAtRisk = Boolean(game && game.streak > 0 && !loggedThisMonth);
   const lessonToday = Boolean(state?.lessons.some(row => new Date(row.completed_at).toDateString() === now.toDateString()));
   const checklist = [
-    { label: `Log ${monthName}’s money`, href: "/check-in", done: loggedThisMonth, reward: "+60 XP · keeps your streak" },
+    { label: `Log ${monthName}’s money`, href: "/month", done: loggedThisMonth, reward: "+60 XP · keeps your streak" },
     { label: "Today’s book lesson", href: "#lesson", done: lessonToday, reward: "+50 XP · 2 minutes" },
     ...(game && game.rate !== null && game.rate < 20 ? [{ label: "Hunt one spending leak", href: "/save-more", done: Boolean(state?.cutPlan), reward: "+40 XP per leak" }] : [{ label: "Set or fund a goal", href: "/goals", done: Boolean(state?.goals.length), reward: "+50 XP" }]),
     { label: game?.current ? `Quest: ${game.current.title}` : "Review your plan", href: game?.current?.href ?? "/plan", done: !game?.current, reward: "+250 XP" },
@@ -225,7 +225,7 @@ export default function JourneyPage() {
 
       {new Date().getDate() <= 7 && state && state.snapshots.length > 0 && <a href="/report" className="report-alert"><span>📬</span><div><strong>Your monthly FIRE report is ready</strong><small>See what changed, how your habits did, and 3 things to focus on next.</small></div><ArrowRight size={18} /></a>}
       {stepUpDue && state && <div className="stepup-alert"><span>📈</span><div><strong>It’s step-up month!</strong><small>Raise your monthly investment from {money(game.profile.monthly_investment)} to {money(stepUpTarget)} (+{state.plan.step_up_percent}%). Then tap Done.</small></div><button type="button" className="button button-primary" onClick={() => void confirmStepUp()}>Done ✓</button></div>}
-      {streakAtRisk && <a href="/check-in" className="streak-alert"><Flame size={20} /><div><strong>Your {game.streak}-month streak is at risk!</strong><span>Log {monthName} to keep it alive — it takes 30 seconds. +60 XP</span></div><ArrowRight size={18} /></a>}
+      {streakAtRisk && <a href="/month" className="streak-alert"><Flame size={20} /><div><strong>Your {game.streak}-month streak is at risk!</strong><span>Log {monthName} to keep it alive — it takes 30 seconds. +60 XP</span></div><ArrowRight size={18} /></a>}
 
       {!streakAtRisk && <section className="motivation-banner">
         <h2>{game.motivation.headline}</h2>

@@ -35,7 +35,7 @@ export default function FireSlider({ age, accessible, monthlyInvestment, target,
           {diff !== null && Math.abs(diff) >= 0.1 && <em className={diff > 0 ? "good" : "bad"}>{diff > 0 ? `🚀 ${diff.toFixed(1)} years sooner` : `${Math.abs(diff).toFixed(1)} years later`}</em>}
         </div>
       </div>
-      <p className="journey-note">In today’s money, {realReturn.toFixed(1)}% real growth. Like what you see? Increase your SIP, then update it in your <a href="/check-in">monthly check-in</a>.</p>
+      <p className="journey-note">In today’s money, {realReturn.toFixed(1)}% real growth. Like what you see? Increase your SIP, then update it in your <a href="/month">monthly check-in</a>.</p>
     </section>
   );
 }

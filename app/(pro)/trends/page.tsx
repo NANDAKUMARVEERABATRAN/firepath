@@ -118,7 +118,7 @@ export default function TrendsPage() {
     {loading ? <p className="profile-status">Loading your trends…</p> : message ? <p className="profile-status">{message}</p> : months.length < 2 ? <section className="profile-card tr-empty">
       <h2>📈 Your trends appear after 2 check-ins</h2>
       <p>{months.length === 1 ? "You’ve logged 1 month. Log next month and your charts start here." : "Log your first month to start your trend line. It takes 30 seconds and it’s pre-filled."}</p>
-      <Link href="/check-in" className="button button-primary">Log a month</Link>
+      <Link href="/month" className="button button-primary">Log a month</Link>
     </section> : <>
       <div className="tr-range" role="group" aria-label="Time range">{([["12", "Last 12 months"], ["all", "All months"], ["year", "By year"]] as [Range, string][]).map(([id, label]) => <button key={id} type="button" className={range === id ? "on" : ""} aria-pressed={range === id} onClick={() => { setRange(id); setHover(null); }}>{label}</button>)}</div>
 
@@ -185,7 +185,7 @@ export default function TrendsPage() {
           <span className="tr-cat-bar"><i style={{ width: `${(c.total / categories[0].total) * 100}%` }} /></span>
           <b>{money(c.total)}</b>
           <small>{c.change === null ? "" : `${c.change >= 0 ? "▲" : "▼"} ${Math.abs(Math.round(c.change))}%`}</small>
-        </li>)}</ul> : <p className="side-empty">Record spending in the <Link href="/budget">Budget</Link> (or import a statement CSV) to see which categories take the most, and whether they’re shrinking.</p>}
+        </li>)}</ul> : <p className="side-empty">Log spending <Link href="/month">by category in This month</Link> (or import a statement CSV) to see which categories take the most, and whether they’re shrinking.</p>}
       </section>
       <p className="journey-note">Months you didn’t log are skipped. Figures come from your check-ins: take-home, EPF/NPS from salary, spending (excluding investing and EMIs), investing and EMIs.</p>
     </>}
