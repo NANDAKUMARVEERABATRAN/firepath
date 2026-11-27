@@ -10,9 +10,11 @@ type Props = {
   completed: boolean;
   onAnswer: (lessonId: string, correct: boolean) => Promise<void>;
   onNext?: () => void;
+  /** Why this lesson was picked today (the book coach), shown above the lesson. */
+  reason?: string | null;
 };
 
-export default function DailyLesson({ lesson, completed, onAnswer, onNext }: Props) {
+export default function DailyLesson({ lesson, completed, onAnswer, onNext, reason }: Props) {
   const [choice, setChoice] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const answered = choice !== null;
@@ -29,6 +31,7 @@ export default function DailyLesson({ lesson, completed, onAnswer, onNext }: Pro
   return (
     <article className="lesson-card">
       <p className="eyebrow"><BookOpen size={14} /> TODAY’S BOOK LESSON · +30–50 XP</p>
+      {reason && <p className="lesson-why">🎯 Picked for you: {reason}</p>}
       <span className="lesson-book">From the ideas in <b>{lesson.book}</b> by {lesson.author}</span>
       <h3>{lesson.title}</h3>
       <p>{lesson.idea}</p>

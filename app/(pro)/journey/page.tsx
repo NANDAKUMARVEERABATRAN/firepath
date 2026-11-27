@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, Flame, Lock, Map as MapIcon, Rocket, Sparkles, Target, Trophy, Wallet } from "lucide-react";
+import { ArrowRight, BookOpen, CheckCircle2, Flame, Lock, Map as MapIcon, Rocket, Sparkles, Target, Trophy, Wallet } from "lucide-react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import Celebration from "@/components/game/Celebration";
@@ -21,6 +21,7 @@ import { getBadges, getFireScore, getInvestmentStreak, targetExpenses, totalInco
 import { getCurrentLevel, getFreedomMetrics, getFreedomPath, getMotivation, getRank, getXp, PATH_LEVELS, RANKS, sipForYears } from "@/lib/freedomPath";
 import { analyzeGoal, goalCategories, statusLabel } from "@/lib/goals";
 import { getLessonOfDay, lessons as allLessons } from "@/lib/wisdom";
+import { pickLesson, principlesInAction, type CoachSignals } from "@/lib/bookCoach";
 import { fireStyles, getWhyResult, styleTip } from "@/lib/fireWhy";
 import { inFutureMoney } from "@/lib/inflation";
 import { daysSince } from "@/lib/spendingCheckup";
@@ -82,6 +83,8 @@ export default function JourneyPage() {
       goalProgressPercent: goalProgress,
       whySet: state.why.reasons.length > 0,
       leaksPlugged: Object.keys(state.cutPlan?.items ?? {}).length,
+      // Book ideas put into practice (same rules as the Principles card below).
+      principlesApplied: principlesInAction({ streak, savingsRates: state.checkins.map(r => { const e = r.income + r.salary_savings; return e > 0 ? ((e - r.expenses) / e) * 100 : 0; }), emergencyMonths: getFireScore(profile).emergencyMonths, highInterestDebt: profile.highInterestDebt ?? 0, hasInvestments: state.accounts.some(a => a.kind === "asset" && a.category === "investment") || (profile.investableAssets ?? 0) > 0, protectedCover: Boolean(profile.has_health_insurance && (profile.health_cover_amount ?? 0) > 0 && (!profile.has_dependents || (profile.has_term_insurance && (profile.term_cover_amount ?? 0) > 0))), leaksPlugged: Object.keys(state.cutPlan?.items ?? {}).length, definedEnough: Boolean(state.plan.retirement_expenses || state.why.dreamAge) }).filter(p => p.earned).length,
     });
     const rank = getRank(xp.total);
     const metrics = getFreedomMetrics(profile, options);
@@ -115,12 +118,55 @@ export default function JourneyPage() {
   }, [game, state?.userId]);
 
   const completedIds = useMemo(() => state?.lessons.map(lesson => lesson.lesson_id) ?? [], [state]);
+  // Signals about where this person is weakest right now: they choose today's lesson (the book coach).
+  const coachSignals = useMemo<CoachSignals | null>(() => {
+    if (!game || !state) return null;
+    const p = game.profile, c = state.checkins;
+    const avg = (pick: (r: (typeof c)[number]) => number) => { const rest = c.slice(1, 4); return rest.length ? rest.reduce((s, r) => s + pick(r), 0) / rest.length : 0; };
+    const change = (latest: number, usual: number) => (usual > 0 && c.length >= 2 ? ((latest - usual) / usual) * 100 : null);
+    const snaps = state.snapshots;
+    const prevFire = snaps.length >= 2 ? snaps[snaps.length - 2].fire_portfolio : 0;
+    const earned = totalIncome(p);
+    return {
+      savingsRate: game.rate ?? 0,
+      investRate: earned > 0 ? ((p.monthly_investment + (p.monthly_salary_savings ?? 0)) / earned) * 100 : 0,
+      emergencyMonths: game.score.emergencyMonths,
+      highInterestDebt: p.highInterestDebt ?? 0,
+      protectedCover: Boolean(p.has_health_insurance && (p.health_cover_amount ?? 0) > 0 && (!p.has_dependents || (p.has_term_insurance && (p.term_cover_amount ?? 0) > 0))),
+      spendingChange: c.length ? change(c[0].expenses, avg(r => r.expenses)) : null,
+      incomeChange: c.length ? change(c[0].income, avg(r => r.income)) : null,
+      portfolioChange: prevFire > 0 ? ((snaps[snaps.length - 1].fire_portfolio - prevFire) / prevFire) * 100 : null,
+      fireProgress: game.metrics.fireProgress,
+      streak: game.streak,
+    };
+  }, [game, state]);
+
+  const coachPick = useMemo(() => (coachSignals ? pickLesson(coachSignals, completedIds) : { lesson: getLessonOfDay(new Date(), completedIds), reason: null }), [coachSignals, completedIds]);
   const todaysLesson = useMemo(() => {
-    const base = getLessonOfDay(new Date(), completedIds);
+    const base = coachPick.lesson;
     if (!lessonOffset) return base;
     const index = allLessons.findIndex(lesson => lesson.id === base.id);
     return allLessons[(index + lessonOffset) % allLessons.length];
-  }, [completedIds, lessonOffset]);
+  }, [coachPick, lessonOffset]);
+
+  // Book ideas put into practice (earned by behaviour).
+  const applied = useMemo(() => {
+    if (!game || !state || !coachSignals) return null;
+    const rates = state.checkins.map(r => { const earned = r.income + r.salary_savings; return earned > 0 ? ((earned - r.expenses) / earned) * 100 : 0; });
+    return principlesInAction({ streak: game.streak, savingsRates: rates, emergencyMonths: game.score.emergencyMonths, highInterestDebt: game.profile.highInterestDebt ?? 0, hasInvestments: state.accounts.some(a => a.kind === "asset" && a.category === "investment") || (game.profile.investableAssets ?? 0) > 0, protectedCover: coachSignals.protectedCover, leaksPlugged: Object.keys(state.cutPlan?.items ?? {}).length, definedEnough: Boolean(state.plan.retirement_expenses || state.why.dreamAge) });
+  }, [game, state, coachSignals]);
+
+  // Celebrate a newly applied principle (remembered per browser), like a rank-up.
+  useEffect(() => {
+    if (!applied || !state) return;
+    try {
+      const key = `ff-principles-${state.userId}`;
+      const seen = new Set(JSON.parse(window.localStorage.getItem(key) ?? "null") ?? applied.filter(p => p.earned).map(p => p.id));
+      const fresh = applied.find(p => p.earned && !seen.has(p.id));
+      if (fresh) setCelebrate({ title: `Principle in action: “${fresh.title}” 📚`, detail: `You’re living an idea from ${fresh.book}: ${fresh.how.toLowerCase()}. +60 XP` });
+      window.localStorage.setItem(key, JSON.stringify(applied.filter(p => p.earned).map(p => p.id)));
+    } catch { /* storage unavailable */ }
+  }, [applied, state]);
 
   const answerLesson = useCallback(async (lessonId: string, correct: boolean) => {
     const supabase = createClient();
@@ -154,11 +200,14 @@ export default function JourneyPage() {
   const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
   const monthName = now.toLocaleDateString("en-IN", { month: "long" });
   const loggedThisMonth = Boolean(state?.checkins.some(row => row.month_start === thisMonth));
+  // Monthly reminder: balances change every month (markets, SIPs), so ask for an update once a month.
+  const portfolioUpdated = Boolean(state?.accounts.some(a => a.kind === "asset" && (a.updated_at ?? "") >= thisMonth));
   const streakAtRisk = Boolean(game && game.streak > 0 && !loggedThisMonth);
   const lessonToday = Boolean(state?.lessons.some(row => new Date(row.completed_at).toDateString() === now.toDateString()));
   const checklist = [
     { label: `Log ${monthName}’s money`, href: "/month", done: loggedThisMonth, reward: "+60 XP · keeps your streak" },
     { label: "Today’s book lesson", href: "#lesson", done: lessonToday, reward: "+50 XP · 2 minutes" },
+    { label: "Update your portfolio balances", href: "/accounts", done: portfolioUpdated, reward: "Keeps net worth & FIRE progress true" },
     ...(game && game.rate !== null && game.rate < 20 ? [{ label: "Hunt one spending leak", href: "/save-more", done: Boolean(state?.cutPlan), reward: "+40 XP per leak" }] : [{ label: "Set or fund a goal", href: "/goals", done: Boolean(state?.goals.length), reward: "+50 XP" }]),
     { label: game?.current ? `Quest: ${game.current.title}` : "Review your plan", href: game?.current?.href ?? "/plan", done: !game?.current, reward: "+250 XP" },
   ];
@@ -233,6 +282,7 @@ export default function JourneyPage() {
         const months = Math.floor(Math.max(...stale.map(a => daysSince(a.updated_at) ?? 0)) / 30);
         return <a href="/accounts" className="saver-strip tone-warn later-reminder"><span className="saver-strip-emoji">🏛️</span><div><small>QUARTERLY CHECK</small><strong>Update {stale.map(a => a.name).slice(0, 3).join(", ")}{stale.length > 3 ? "…" : ""}</strong><span>Last updated {months} months ago. Salary contributions and interest add up, so check your EPF passbook / NPS statement and enter the new balance.</span></div><ArrowRight size={18} /></a>;
       })()}
+      {!streakAtRisk && now.getDate() <= 10 && (!loggedThisMonth || !portfolioUpdated) && <div className="new-month-alert"><span>🗓️</span><div><strong>New month, quick update</strong><small>{!loggedThisMonth && !portfolioUpdated ? `Log ${monthName}’s money and update your portfolio balances. Together it takes about 2 minutes.` : !loggedThisMonth ? `Log ${monthName}’s money to keep your progress true.` : "Update your portfolio balances so net worth and FIRE progress stay true."}</small></div><div className="new-month-actions">{!loggedThisMonth && <a href="/month" className="button button-primary">Log month</a>}{!portfolioUpdated && <a href="/accounts" className="button button-secondary">Update portfolio</a>}</div></div>}
       {streakAtRisk && <a href="/month" className="streak-alert"><Flame size={20} /><div><strong>Your {game.streak}-month streak is at risk!</strong><span>Log {monthName} to keep it alive — it takes 30 seconds. +60 XP</span></div><ArrowRight size={18} /></a>}
 
       {!streakAtRisk && <section className="motivation-banner">
@@ -304,7 +354,7 @@ export default function JourneyPage() {
 
         <div>
           <span id="lesson" className="anchor" />
-          <DailyLesson key={todaysLesson.id} lesson={todaysLesson} completed={completedIds.includes(todaysLesson.id)} onAnswer={answerLesson} onNext={() => setLessonOffset(offset => offset + 1)} />
+          <DailyLesson key={todaysLesson.id} lesson={todaysLesson} completed={completedIds.includes(todaysLesson.id)} onAnswer={answerLesson} onNext={() => setLessonOffset(offset => offset + 1)} reason={lessonOffset ? null : coachPick.reason} />
           <p className="lesson-count">{completedIds.length} of {allLessons.length} lessons completed · <Link href="/learn">See all principles</Link></p>
 
           <ShareMilestone milestones={getMilestones({ fireProgress: game.metrics.fireProgress, rankName: game.rank.name, rankNumber: game.rank.rankNumber, streak: game.streak, levelsCleared: game.path.filter(level => level.cleared).length, freedomMonths: game.metrics.freedomMonths, lessons: state?.lessons.length ?? 0, progressGain: state ? getProgressSummary(state.snapshots).progressGain : 0 })} />
@@ -334,6 +384,13 @@ export default function JourneyPage() {
             <ul className="xp-list">{game.xp.breakdown.map(item => <li key={item.label}><span>{item.label}</span><b>{item.xp.toLocaleString("en-IN")}</b></li>)}</ul>
             <p className="side-empty">Fastest XP: monthly check-ins (+60), lessons (+50), clearing levels (+250), achieving goals (+400).</p>
           </section>
+
+          {applied && <section className="side-card principles-card">
+            <div className="side-card-head"><h3><BookOpen size={16} /> Principles in action</h3><span className="principles-count">{applied.filter(p => p.earned).length}/{applied.length}</span></div>
+            <p className="side-empty principles-intro">Book ideas you’ve put into practice, earned by what you do, not by reading. +60 XP each.</p>
+            {applied.filter(p => p.earned).map(p => <div key={p.id} className="principle-done"><span>✓</span><div><strong>{p.title}</strong><small>{p.book}</small></div></div>)}
+            {applied.filter(p => !p.earned).sort((a, b) => b.progress - a.progress).slice(0, 3).map(p => <div key={p.id} className="principle-next"><div><strong>{p.title}</strong><small>{p.how} · {p.book}</small></div><div className="score-track"><span style={{ width: `${p.progress * 100}%` }} /></div><small className="principle-progress">{p.progressLabel}</small></div>)}
+          </section>}
 
           <section className="side-card">
             <div className="side-card-head"><h3><Trophy size={16} /> Badges</h3><Link href="/dashboard" className="text-link">All →</Link></div>

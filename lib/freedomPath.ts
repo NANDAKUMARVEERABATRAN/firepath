@@ -210,6 +210,7 @@ export type XpInput = {
   goalProgressPercent: number; // average progress across active goals, 0..100
   whySet?: boolean; // answered "why do you want financial freedom?"
   leaksPlugged?: number; // spending leaks in the "Save more" pledge
+  principlesApplied?: number; // book ideas put into practice (lib/bookCoach.ts)
 };
 
 export type XpBreakdown = { label: string; xp: number }[];
@@ -226,6 +227,7 @@ export function getXp(input: XpInput): { total: number; breakdown: XpBreakdown }
     { label: "Goal progress", xp: Math.round(input.goalProgressPercent * 3) },
     ...(input.whySet ? [{ label: "Found your why", xp: 100 }] : []),
     ...(input.leaksPlugged ? [{ label: "Spending leaks plugged", xp: Math.min(10, input.leaksPlugged) * 40 }] : []),
+    ...(input.principlesApplied ? [{ label: "Book principles in action", xp: input.principlesApplied * 60 }] : []),
   ];
   return { total: breakdown.reduce((sum, item) => sum + item.xp, 0), breakdown };
 }
