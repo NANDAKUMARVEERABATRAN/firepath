@@ -29,7 +29,7 @@ export const COUNTRIES: Record<CountryCode, CountryConfig> = {
     calculator: { expenses: 60000, assets: 2500000, monthlyInvestment: 25000, expensesMax: 1000000, assetsMax: 100000000, investmentMax: 1000000, step: 1000 },
     sliderSteps: [-5000, 5000, 10000, 25000], boostStep: 5000,
     laterAccessLabel: "EPF, PPF or NPS", laterAccessExamples: "Check your EPFO passbook or NPS app.",
-    pricing: { monthly: 75, yearly: 500 },
+    pricing: { monthly: 100, yearly: 899 },
   },
   AE: {
     code: "AE", name: "UAE", flag: "🇦🇪", currency: "AED", symbol: "AED", locale: "en-AE", wordsStyle: "international",
