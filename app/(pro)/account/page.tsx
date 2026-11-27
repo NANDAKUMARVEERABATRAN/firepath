@@ -6,6 +6,7 @@ import { ArrowLeft, Crown, Heart, PauseCircle } from "lucide-react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import DeleteAccount from "@/components/account/DeleteAccount";
+import PushToggle from "@/components/pwa/PushToggle";
 import { createClient } from "@/lib/supabase/client";
 import { loadFinancialState, type FinancialState } from "@/lib/financialState";
 import { getGameSummary } from "@/lib/gameSummary";
@@ -118,6 +119,7 @@ export default function AccountPage() {
         </div>
       </section>}
 
+      {step === "overview" && <PushToggle />}
       {step === "overview" && <DeleteAccount />}
 
       {step === "proud" &&<section className="account-card cancel-flow">

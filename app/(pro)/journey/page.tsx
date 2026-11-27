@@ -24,6 +24,9 @@ import { getLessonOfDay, lessons as allLessons } from "@/lib/wisdom";
 import { pickLesson, principlesInAction, type CoachSignals } from "@/lib/bookCoach";
 import { monthsToAutoFill, usualNumbers } from "@/lib/autoFill";
 import { investingPerMonth } from "@/lib/extraInvesting";
+import MarketCoach from "@/components/game/MarketCoach";
+import PushToggle from "@/components/pwa/PushToggle";
+import { recapYearFor } from "@/lib/yearRecap";
 import { FOUNDING, foundingOpen } from "@/lib/subscription";
 import { fireStyles, getWhyResult, styleTip } from "@/lib/fireWhy";
 import { inFutureMoney } from "@/lib/inflation";
@@ -297,6 +300,15 @@ export default function JourneyPage() {
       </section>
 
       {new Date().getDate() <= 7 && state && state.snapshots.length > 0 && <a href="/report" className="report-alert"><span>📬</span><div><strong>Your monthly FIRE report is ready</strong><small>See what changed, how your habits did, and 3 things to focus on next.</small></div><ArrowRight size={18} /></a>}
+      {(() => {
+        // Market-fall coach: equity share of the FIRE portfolio from itemised funds/stocks (else a typical 70%).
+        const fireItems = (state?.accounts ?? []).filter(a => a.kind === "asset" && a.fire_treatment === "available" && !a.goal_id);
+        const fireTotal = fireItems.reduce((s, a) => s + a.current_value, 0);
+        const equity = fireItems.filter(a => a.investment_type === "mutual_fund" || a.investment_type === "stocks").reduce((s, a) => s + a.current_value, 0);
+        return <MarketCoach accessible={Math.max(0, game.profile.investableAssets ?? game.profile.assets)} equityShare={fireTotal > 0 ? equity / fireTotal : 0.7} monthlyInvestment={investingPerMonth(game.profile)} target={game.metrics.fireTarget} realReturn={(state?.plan.expected_return ?? 10) - (state?.plan.inflation_rate ?? 6)} />;
+      })()}
+      {recapYearFor().season && <a href="/recap" className="saver-strip recap-strip"><span className="saver-strip-emoji">🎉</span><div><small>YEAR IN REVIEW</small><strong>Your {recapYearFor().year} FIRE recap is ready</strong><span>How much you invested, your best month and how far you moved towards freedom.</span></div><ArrowRight size={18} /></a>}
+      <PushToggle variant="card" />
       {stepUpDue && state && <div className="stepup-alert"><span>📈</span><div><strong>It’s step-up month!</strong><small>Raise your monthly investment from {money(game.profile.monthly_investment)} to {money(stepUpTarget)} (+{state.plan.step_up_percent}%). Then tap Done.</small></div><button type="button" className="button button-primary" onClick={() => void confirmStepUp()}>Done ✓</button></div>}
       {(() => {
         // Quarterly nudge: EPF/NPS/PPF grow every month, so ask for the real passbook balance every 3 months.

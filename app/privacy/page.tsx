@@ -19,6 +19,7 @@ export default function Privacy() {
       <li><b>Subscription details:</b> your plan, trial dates and cancellation reason (if you give one). When paid plans launch, payments are processed by our payment provider; <b>we never see or store your full card or UPI details.</b></li>
       <li><b>On your device:</b> sign-in cookies, plus browser storage for your calculator inputs and country choice. The free calculator works without an account and its numbers stay on your device unless you sign up.</li>
       <li><b>Voice entry:</b> if you use the microphone, speech is converted to text by your browser or phone’s speech service (for example Google in Chrome). We only receive the resulting text, and only when you save the form.</li>
+      <li><b>Phone reminders (optional):</b> if you turn them on, we store a notification address for your device (from your browser or phone, not your phone number) and a log of which reminders we sent, so each goes out only once. Reminders never contain amounts. You can turn them off any time on the Subscription page or in your phone settings.</li>
     </ul>
     <p>We don’t ask for bank logins, card numbers, Aadhaar, PAN or Emirates ID. Please don’t type them into free-text fields.</p>
 
