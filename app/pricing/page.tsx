@@ -9,6 +9,7 @@ import { getProStatus, hasPro, type ProStatus, type SubscriptionRow } from "@/li
 
 const rows: [string, boolean, boolean][] = [
   ["FIRE calculator & your freedom number", true, true],
+  ["Invite friends: they get 30 days of Pro, you earn points", true, true],
   ["Your freedom date & 11-level Freedom Path, XP, ranks & badges", false, true],
   ["FIRE score & daily book lessons", false, true],
   ["This month: income, spending, budget & check-up", false, true],

@@ -44,9 +44,9 @@ export const REFERRAL_REWARD = { signup: 100, paid: 990 } as const;
 
 /**
  * Free: the FIRE calculator on "/" (no sign-in) and your own freedom number (shown above the paywall).
- * Everything else after sign-in is Pro. Subscription & account deletion always stay reachable.
+ * Everything else after sign-in is Pro. Subscription & account deletion always stay reachable; Invite stays free so anyone can share.
  */
-export const FREE_APP_PAGES = ["/account"] as const;
+export const FREE_APP_PAGES = ["/account", "/invite"] as const;
 export const FREE_GOAL_LIMIT = 1;
 export const isProOnlyPage = (path: string | null | undefined) => !(FREE_APP_PAGES as readonly string[]).includes(path ?? "");
 

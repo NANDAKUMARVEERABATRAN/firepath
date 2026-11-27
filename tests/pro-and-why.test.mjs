@@ -53,7 +53,8 @@ test("sipForYears finds the monthly amount that reaches the target in time", () 
 
 import { FOUNDING, foundingOpen, isProOnlyPage } from "../lib/subscription.ts";
 test("free plan: every app page needs Pro except Subscription; founding offer closes on its date", () => {
-  for (const p of ["/journey", "/month", "/accounts", "/goals", "/learn", "/dashboard", "/invite", "/trends", "/plan", "/tax", "/profile"]) assert.equal(isProOnlyPage(p), true);
+  for (const p of ["/journey", "/month", "/accounts", "/goals", "/learn", "/dashboard", "/trends", "/plan", "/tax", "/profile"]) assert.equal(isProOnlyPage(p), true);
+  assert.equal(isProOnlyPage("/invite"), false);
   assert.equal(isProOnlyPage("/account"), false);
   assert.equal(foundingOpen(new Date(`${FOUNDING.until}T10:00:00Z`)), true);
   assert.equal(foundingOpen(new Date("2027-02-01T10:00:00Z")), false);
