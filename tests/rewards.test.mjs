@@ -16,8 +16,8 @@ test("redemption is capped at half the bill and never uses more points than you 
 });
 
 test("free months from points", () => {
-  assert.equal(freeMonthsFromPoints(1000, "IN"), 1); // ₹100 = one month
-  assert.equal(freeMonthsFromPoints(990, "IN"), 0); // ₹99 is just short
+  assert.equal(freeMonthsFromPoints(990, "IN"), 1); // ₹99 = one month
+  assert.equal(freeMonthsFromPoints(980, "IN"), 0); // ₹98 is just short
   assert.equal(freeMonthsFromPoints(500, "IN"), 0);
   assert.equal(freeMonthsFromPoints(2000, "AE"), 2); // AED 30 = two months at AED 15
 });

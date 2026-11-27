@@ -1,4 +1,4 @@
-export const PRICING = { monthly: 100, yearly: 899, trialDays: 14 } as const;
+export const PRICING = { monthly: 99, yearly: 899, trialDays: 14 } as const;
 
 /**
  * Flip to true once Razorpay checkout works. Until then, people whose trial ended keep access

@@ -42,9 +42,9 @@ test("Freedom Path wording adapts to the UAE", () => {
 });
 
 import { yearlySavingPercent } from "../lib/country.ts";
-test("India pricing: ₹100/month or ₹899/year (25% saving); UAE unchanged", () => {
-  assert.deepEqual(getCountry("IN").pricing, { monthly: 100, yearly: 899 });
-  assert.equal(yearlySavingPercent("IN"), 25);
+test("India pricing: ₹99/month or ₹899/year (24% saving); UAE unchanged", () => {
+  assert.deepEqual(getCountry("IN").pricing, { monthly: 99, yearly: 899 });
+  assert.equal(yearlySavingPercent("IN"), 24);
   assert.equal(yearlySavingPercent("AE"), 34);
 });
 
