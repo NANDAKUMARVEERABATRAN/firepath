@@ -5,7 +5,7 @@ import { normalizeSnapshots, type Snapshot } from "./progress.ts";
 import { countryFromCurrency, formatCountryMoney, getCountry, readStoredCountry, storeCountry } from "./country.ts";
 
 export type AccountRow = { id: string; name: string; kind: "asset" | "liability"; category: string; investment_type: string | null; current_value: number; monthly_payment: number; is_high_interest: boolean; fire_treatment: string; property_use?: "self_occupied" | "rented" | "investment" | null; goal_id?: string | null; updated_at?: string | null };
-export type CheckinRow = { month_start: string; income: number; investment_income: number; expenses: number; invested: number; debt_paid: number; salary_savings: number };
+export type CheckinRow = { month_start: string; income: number; investment_income: number; expenses: number; invested: number; debt_paid: number; salary_savings: number; salary_pf: number; salary_pension: number; auto_filled: boolean };
 export type PlanRow = { retirement_age: number; inflation_rate: number; expected_return: number; withdrawal_rate: number; retirement_expenses?: number | null; step_up_percent?: number; step_up_month?: number | null; step_up_done_year?: number | null };
 export type LessonRow = { lesson_id: string; answered_correctly: boolean; completed_at: string };
 
@@ -24,6 +24,8 @@ export type FinancialState = {
   why: { reasons: string[]; note: string; dreamAge: number | null };
   snapshots: Snapshot[]; // monthly progress history (oldest first)
   cutPlan: CutPlan | null; // "Save more" pledge
+  profileCreated: string | null; // when they started (auto-fill never goes earlier)
+  usual: { income: number; investment_income: number; expenses: number; invested: number; debt_paid: number; salary_pf: number; salary_pension: number } | null; // profile defaults
 };
 
 export type CutPlan = { items: Record<string, number>; monthly_total: number; baseline_expenses: number; committed_at: string; applied?: boolean };
@@ -57,7 +59,7 @@ export async function loadFinancialState(supabase: SupabaseClient, userId: strin
 
   // select("*") keeps the Journey working whether or not the property_use migration has been applied yet.
   const accounts: AccountRow[] = (accountsResult.data ?? []).map(row => ({ id: row.id, name: row.name, kind: row.kind, category: row.category, investment_type: row.investment_type ?? null, current_value: Number(row.current_value), monthly_payment: Number(row.monthly_payment), is_high_interest: Boolean(row.is_high_interest), fire_treatment: row.fire_treatment, property_use: row.property_use ?? null, goal_id: row.goal_id ?? null, updated_at: row.updated_at ?? null }));
-  const checkins: CheckinRow[] = (checkinResult.data ?? []).map(row => ({ month_start: row.month_start, income: Number(row.income), investment_income: Number(row.investment_income ?? 0), expenses: Number(row.expenses), invested: Number(row.invested), debt_paid: Number(row.debt_paid), salary_savings: Number(row.salary_pf ?? 0) + Number(row.salary_pension ?? 0) }));
+  const checkins: CheckinRow[] = (checkinResult.data ?? []).map(row => ({ month_start: row.month_start, income: Number(row.income), investment_income: Number(row.investment_income ?? 0), expenses: Number(row.expenses), invested: Number(row.invested), debt_paid: Number(row.debt_paid), salary_savings: Number(row.salary_pf ?? 0) + Number(row.salary_pension ?? 0), salary_pf: Number(row.salary_pf ?? 0), salary_pension: Number(row.salary_pension ?? 0), auto_filled: Boolean(row.auto_filled) }));
   // The saved profile currency decides the country (₹ India / AED UAE) across the whole app.
   const country = getCountry(countryFromCurrency(profileResult.data?.currency));
   if (profileResult.data?.currency && typeof window !== "undefined" && readStoredCountry() !== country.code) storeCountry(country.code);
@@ -111,7 +113,9 @@ export async function loadFinancialState(supabase: SupabaseClient, userId: strin
   return { userId, profile, scoreProfile, plan, accounts, checkins, goals, rawGoals, lessons: lessonResult.data ?? [], badgeKeys: (badgeResult.data ?? []).map(row => row.badge_key), warnings,
     why: { reasons: Array.isArray(data?.fire_reasons) ? data.fire_reasons : [], note: data?.fire_why_note ?? "", dreamAge: data?.dream_age ? Number(data.dream_age) : null },
     snapshots: snapshotResult.error ? [] : normalizeSnapshots(snapshotResult.data),
-    cutPlan: normalizeCutPlan(data?.cut_plan) };
+    cutPlan: normalizeCutPlan(data?.cut_plan),
+    profileCreated: data?.created_at ?? null,
+    usual: data ? { income: Number(data.monthly_income ?? 0), investment_income: Number(data.monthly_investment_income ?? 0), expenses: Number(data.monthly_expenses ?? 0), invested: Number(data.monthly_investment ?? 0), debt_paid: profile?.monthlyDebtPayments ?? 0, salary_pf: Number(data.monthly_salary_pf ?? 0), salary_pension: Number(data.monthly_salary_pension ?? 0) } : null };
 }
 
 export function formatMoney(value: number, currency: "INR" | "AED" | "USD" = "INR"): string {

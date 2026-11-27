@@ -26,7 +26,8 @@ function Amount({ label, hint, value, onChange, symbol }: { label: string; hint?
 }
 
 export default function ThisMonthPage() {
-  const [month, setMonth] = useState(monthOf());
+  const [month, setMonth] = useState(() => { if (typeof window === "undefined") return monthOf(); const m = new URLSearchParams(window.location.search).get("month"); return m && /^\d{4}-\d{2}-01$/.test(m) && m <= monthOf() ? m : monthOf(); });
+  const [autoRow, setAutoRow] = useState<boolean | null>(null); // this month was auto-filled (null = column missing)
   const [userId, setUserId] = useState<string | null>(null);
   const [code, setCode] = useState<CountryCode>("IN");
   const [form, setForm] = useState<Form>(emptyForm);
@@ -102,6 +103,7 @@ export default function ThisMonthPage() {
       setLimits(Object.fromEntries((budgets.data ?? []).filter(b => b.month_start === latest && Number(b.target_amount) > 0).map(b => [b.category, Number(b.target_amount)])));
 
       const current = rows.find(r => r.month_start === m);
+      setAutoRow(current && "auto_filled" in current ? Boolean(current.auto_filled) : null);
       const before = rows.find(r => r.month_start < m);
       const earlier = rows.filter(r => r.month_start < m).slice(0, 3);
       setUsualSpent(earlier.length ? earlier.reduce((s, r) => s + Number(r.expenses), 0) / earlier.length : Number(profile.data?.monthly_expenses ?? 0));
@@ -111,7 +113,7 @@ export default function ThisMonthPage() {
       let next: Form;
       if (current) {
         next = { takeHome: String(current.income), salaryPf: String(current.salary_pf ?? 0), salaryPension: String(current.salary_pension ?? 0), investmentIncome: String(current.investment_income ?? 0), spentTotal: String(current.expenses), invested: String(current.invested), emis: String(current.debt_paid), note: current.note ?? "" };
-        setSource(`You already logged ${new Date(`${m}T12:00:00`).toLocaleDateString("en-IN", { month: "long" })}. Change anything and save again.`);
+        setSource(current.auto_filled ? `📝 ${new Date(`${m}T12:00:00`).toLocaleDateString("en-IN", { month: "long" })} wasn’t logged, so we filled in your usual numbers. Check them, change anything that was different, and save to confirm (+60 XP).` : `You already logged ${new Date(`${m}T12:00:00`).toLocaleDateString("en-IN", { month: "long" })}. Change anything and save again.`);
       } else if (before) {
         next = { ...emptyForm, takeHome: String(before.income), salaryPf: String(before.salary_pf ?? 0), salaryPension: String(before.salary_pension ?? 0), investmentIncome: String(before.investment_income ?? 0), invested: String(before.invested), emis: String(before.debt_paid) };
         setSource("Income, investing and EMIs are pre-filled from last month. Just add this month’s spending.");
@@ -177,11 +179,12 @@ export default function ThisMonthPage() {
       const { error } = await supabase.from("monthly_checkins").upsert({
         user_id: userId, month_start: month, income: n(form.takeHome), investment_income: Math.min(n(form.investmentIncome), n(form.takeHome)), expenses: spent, invested: n(form.invested), debt_paid: n(form.emis), note: form.note.trim().slice(0, 500), updated_at: new Date().toISOString(),
         ...(salaryColumns || salaryChanged ? { salary_pf: n(form.salaryPf), salary_pension: n(form.salaryPension) } : {}),
+        ...(autoRow !== null ? { auto_filled: false } : {}), // saving confirms an auto-filled month
       }, { onConflict: "user_id,month_start" });
       if (error) throw /salary_p/.test(error.message) ? new Error("Run supabase/migrations/202611260026_salary_savings.sql in Supabase to save EPF/NPS.") : error;
       if (salaryColumns && isCurrent) await supabase.from("financial_profiles").update({ monthly_salary_pf: n(form.salaryPf), monthly_salary_pension: n(form.salaryPension) }).eq("user_id", userId);
       const streak = getInvestmentStreak([{ month_start: month, invested: n(form.invested) }, ...history.filter(h => h.month_start !== month)]);
-      setCelebrate({ title: logged ? `${monthName.split(" ")[0]} updated ✓` : `${monthName.split(" ")[0]} logged! +60 XP`, detail: `${Math.round(summary.savingsRate)}% savings rate this month.${streak > 0 ? ` 🔥 ${streak}-month investing streak.` : ""} Your score and freedom date are updated on Home.` });
+      setCelebrate({ title: logged && !autoRow ? `${monthName.split(" ")[0]} updated ✓` : `${monthName.split(" ")[0]} logged! +60 XP`, detail: `${Math.round(summary.savingsRate)}% savings rate this month.${streak > 0 ? ` 🔥 ${streak}-month investing streak.` : ""} Your score and freedom date are updated on Home.` });
       await load(month);
     } catch (e) { setMessage(e instanceof Error ? e.message : String((e as { message?: string })?.message ?? "Could not save.")); }
     finally { setSaving(false); }

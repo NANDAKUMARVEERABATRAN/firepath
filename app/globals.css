@@ -766,3 +766,4 @@ button.tm-limit{border:0;padding:0;cursor:pointer;text-align:left;width:100%;fon
 .new-month-alert>span{font-size:28px}.new-month-alert>div:nth-child(2){flex:1;min-width:200px;display:flex;flex-direction:column;gap:2px}
 .new-month-alert strong{font-family:Manrope,sans-serif;color:var(--navy)}.new-month-alert small{font-size:13px;color:#556575}
 .new-month-actions{display:flex;gap:8px;flex-wrap:wrap}.new-month-actions .button{padding:9px 14px;font-size:13px}
+.autofill-strip{margin:0 0 14px}

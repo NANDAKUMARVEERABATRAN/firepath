@@ -22,6 +22,7 @@ import { getCurrentLevel, getFreedomMetrics, getFreedomPath, getMotivation, getR
 import { analyzeGoal, goalCategories, statusLabel } from "@/lib/goals";
 import { getLessonOfDay, lessons as allLessons } from "@/lib/wisdom";
 import { pickLesson, principlesInAction, type CoachSignals } from "@/lib/bookCoach";
+import { monthsToAutoFill, usualNumbers } from "@/lib/autoFill";
 import { fireStyles, getWhyResult, styleTip } from "@/lib/fireWhy";
 import { inFutureMoney } from "@/lib/inflation";
 import { daysSince } from "@/lib/spendingCheckup";
@@ -74,7 +75,7 @@ export default function JourneyPage() {
     const xp = getXp({
       levelsCleared: path.filter(level => level.cleared).length,
       badgesEarned: badges.filter(badge => badge.earned).length,
-      checkins: state.checkins.length,
+      checkins: state.checkins.filter(c => !c.auto_filled).length, // auto-filled months earn no XP until confirmed
       investmentStreak: streak,
       lessonsCompleted: state.lessons.length,
       lessonsCorrect: state.lessons.filter(lesson => lesson.answered_correctly).length,
@@ -155,6 +156,26 @@ export default function JourneyPage() {
     const rates = state.checkins.map(r => { const earned = r.income + r.salary_savings; return earned > 0 ? ((earned - r.expenses) / earned) * 100 : 0; });
     return principlesInAction({ streak: game.streak, savingsRates: rates, emergencyMonths: game.score.emergencyMonths, highInterestDebt: game.profile.highInterestDebt ?? 0, hasInvestments: state.accounts.some(a => a.kind === "asset" && a.category === "investment") || (game.profile.investableAssets ?? 0) > 0, protectedCover: coachSignals.protectedCover, leaksPlugged: Object.keys(state.cutPlan?.items ?? {}).length, definedEnough: Boolean(state.plan.retirement_expenses || state.why.dreamAge) });
   }, [game, state, coachSignals]);
+
+  // Months not logged: fill them with the usual numbers (marked auto-filled) so charts and the report have no holes.
+  const [autoFilled, setAutoFilled] = useState<string[]>([]);
+  const [autoFillTried, setAutoFillTried] = useState(false);
+  useEffect(() => {
+    if (!state || autoFillTried) return;
+    setAutoFillTried(true);
+    const current = monthStartOf();
+    const start = `${(state.profileCreated ?? state.checkins.at(-1)?.month_start ?? current).slice(0, 7)}-01`;
+    const missing = monthsToAutoFill(state.checkins.map(c => c.month_start), current, start);
+    const rows = missing.flatMap(m => { const u = usualNumbers(m, state.checkins, state.usual); return u ? [{ user_id: state.userId, month_start: m, ...u, auto_filled: true, note: "Auto-filled with your usual numbers. Open This month to correct it." }] : []; });
+    if (!rows.length) return;
+    const supabase = createClient();
+    if (!supabase) return;
+    void supabase.from("monthly_checkins").upsert(rows, { onConflict: "user_id,month_start", ignoreDuplicates: true }).then(({ error }) => {
+      if (error) return; // migration 0032 not run yet: never write unmarked guesses
+      setAutoFilled(rows.map(r => r.month_start));
+      setReload(value => value + 1);
+    });
+  }, [state, autoFillTried]);
 
   // Celebrate a newly applied principle (remembered per browser), like a rank-up.
   useEffect(() => {
@@ -283,6 +304,12 @@ export default function JourneyPage() {
         return <a href="/accounts" className="saver-strip tone-warn later-reminder"><span className="saver-strip-emoji">🏛️</span><div><small>QUARTERLY CHECK</small><strong>Update {stale.map(a => a.name).slice(0, 3).join(", ")}{stale.length > 3 ? "…" : ""}</strong><span>Last updated {months} months ago. Salary contributions and interest add up, so check your EPF passbook / NPS statement and enter the new balance.</span></div><ArrowRight size={18} /></a>;
       })()}
       {!streakAtRisk && now.getDate() <= 10 && (!loggedThisMonth || !portfolioUpdated) && <div className="new-month-alert"><span>🗓️</span><div><strong>New month, quick update</strong><small>{!loggedThisMonth && !portfolioUpdated ? `Log ${monthName}’s money and update your portfolio balances. Together it takes about 2 minutes.` : !loggedThisMonth ? `Log ${monthName}’s money to keep your progress true.` : "Update your portfolio balances so net worth and FIRE progress stay true."}</small></div><div className="new-month-actions">{!loggedThisMonth && <a href="/month" className="button button-primary">Log month</a>}{!portfolioUpdated && <a href="/accounts" className="button button-secondary">Update portfolio</a>}</div></div>}
+      {(() => {
+        const pending = autoFilled.length ? autoFilled : (state?.checkins ?? []).filter(c => c.auto_filled).map(c => c.month_start).slice(0, 3);
+        if (!pending.length) return null;
+        const names = pending.map(m => new Date(`${m}T12:00:00`).toLocaleDateString("en-IN", { month: "long" }));
+        return <a href={`/month?month=${pending[0]}`} className="saver-strip tone-warn autofill-strip"><span className="saver-strip-emoji">📝</span><div><small>NOT LOGGED, SO WE FILLED IT IN</small><strong>{names.join(" & ")}: your usual numbers were used</strong><span>Check {pending.length > 1 ? "them" : "it"} and save. Confirmed months earn +60 XP and make your savings rate and report accurate.</span></div><ArrowRight size={18} /></a>;
+      })()}
       {streakAtRisk && <a href="/month" className="streak-alert"><Flame size={20} /><div><strong>Your {game.streak}-month streak is at risk!</strong><span>Log {monthName} to keep it alive — it takes 30 seconds. +60 XP</span></div><ArrowRight size={18} /></a>}
 
       {!streakAtRisk && <section className="motivation-banner">
