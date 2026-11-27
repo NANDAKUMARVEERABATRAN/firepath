@@ -7,7 +7,8 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { createClient } from "@/lib/supabase/client";
 import { countryFromCurrency, formatCountryMoney, type CountryCode } from "@/lib/country";
-import { categoryTotals, highlights, monthlyRows, niceMax, shortMoney, yearlyRows, type TrendCheckin, type TrendRow } from "@/lib/trends";
+import { categoryTotals, growth, highlights, monthlyRows, niceMax, shortMoney, wealthRows, yearlyRows, type TrendCheckin, type TrendRow, type WealthSnapshot } from "@/lib/trends";
+import { normalizeSnapshots } from "@/lib/progress";
 
 type Range = "12" | "all" | "year";
 type Entry = { month_start: string; category: string; amount: number };
@@ -38,6 +39,9 @@ export default function TrendsPage() {
   const [range, setRange] = useState<Range>("12");
   const [hover, setHover] = useState<number | null>(null);
   const [hoverChart, setHoverChart] = useState<"money" | "rate">("money");
+  const [snaps, setSnaps] = useState<WealthSnapshot[]>([]);
+  const [period, setPeriod] = useState<"month" | "quarter">("month");
+  const [wHover, setWHover] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   // Charts are drawn at the real container width so text stays readable on phones.
@@ -61,11 +65,13 @@ export default function TrendsPage() {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.user) { setMessage("Sign in to see your money trends."); return; }
-        const [c, b, p] = await Promise.all([
+        const [c, b, p, s] = await Promise.all([
           supabase.from("monthly_checkins").select("*").eq("user_id", session.user.id).order("month_start", { ascending: true }).limit(120),
           supabase.from("budget_transactions").select("month_start, category, amount").eq("user_id", session.user.id).gte("month_start", monthKey(-23)),
           supabase.from("financial_profiles").select("currency").eq("user_id", session.user.id).maybeSingle(),
+          supabase.from("progress_snapshots").select("*").eq("user_id", session.user.id).order("month_start", { ascending: true }).limit(120),
         ]);
+        if (!s.error) setSnaps(normalizeSnapshots(s.data).map(x => ({ month_start: x.month_start, net_worth: x.net_worth, fire_portfolio: x.fire_portfolio, fire_target: x.fire_target })));
         if (c.error) throw c.error;
         setCheckins((c.data ?? []).map(r => ({ month_start: r.month_start, income: Number(r.income), expenses: Number(r.expenses), invested: Number(r.invested), debt_paid: Number(r.debt_paid), salary_pf: Number(r.salary_pf ?? 0), salary_pension: Number(r.salary_pension ?? 0) })));
         setEntries(((b.data ?? []) as Entry[]).map(e => ({ ...e, amount: Number(e.amount) })));
@@ -98,6 +104,50 @@ export default function TrendsPage() {
   const yr = (v: number) => M.top + innerH - ((v - rateMin) / (rateMax - rateMin)) * innerH;
   const ratePath = rows.map((r, i) => `${i ? "L" : "M"}${cx(i).toFixed(1)},${yr(r.savingsRate).toFixed(1)}`).join(" ");
 
+  // Wealth over time: net worth and FIRE portfolio, with the FIRE number as a dashed reference line.
+  const wRows = useMemo(() => wealthRows(snaps, period), [snaps, period]);
+  const wBand = wRows.length ? innerW / wRows.length : innerW;
+  const wx = (i: number) => M.left + wBand * i + wBand / 2;
+  const wMax = niceMax(Math.max(1, ...wRows.flatMap(r => [r.netWorth, r.fire, r.target])));
+  const wy = (v: number) => M.top + innerH - (Math.max(0, v) / wMax) * innerH;
+  const wPath = (pick: (r: (typeof wRows)[number]) => number) => wRows.map((r, i) => `${i ? "L" : "M"}${wx(i).toFixed(1)},${wy(pick(r)).toFixed(1)}`).join(" ");
+  const nwGrowth = growth(wRows, r => r.netWorth), fireGrowth = growth(wRows, r => r.fire);
+  const wLabelEvery = Math.max(1, Math.ceil(wRows.length / Math.max(3, Math.floor(innerW / 58))));
+  const wTip = wHover !== null ? wRows[wHover] : null;
+  const last = wRows.at(-1);
+  const growthText = (g: ReturnType<typeof growth>) => g ? `${g.change >= 0 ? "▲" : "▼"} ${money(Math.abs(g.change))}${g.percent !== null ? ` (${g.percent >= 0 ? "+" : ""}${g.percent.toFixed(1)}%)` : ""}` : "—";
+  const wealthSection = <section className="tr-card tr-wealth">
+    <div className="tr-head"><div><h2>Your wealth over time</h2><p>Net worth (everything you own minus loans) and your FIRE portfolio (money that counts toward freedom). Dashed line: your FIRE number.</p></div>
+      <div className="tr-range tm-mode" role="group" aria-label="Period">{([["month", "Monthly"], ["quarter", "Quarterly"]] as const).map(([id, label]) => <button key={id} type="button" className={period === id ? "on" : ""} aria-pressed={period === id} onClick={() => { setPeriod(id); setWHover(null); }}>{label}</button>)}</div></div>
+    {wRows.length < 2 || !last ? <p className="side-empty">{wRows.length === 1 ? `Your wealth line starts in ${wRows[0].label}. FIREpath saves a snapshot each month when you open Home, so the line grows from next month. Keep your Portfolio up to date (or import your CAS) before then.` : "Open Home once a month and keep your Portfolio up to date. Your wealth line starts from your first snapshot."}</p> : <>
+      <div className="tr-facts tr-wealth-facts">
+        <div><span>Net worth</span><strong>{money(last.netWorth)}</strong><small>{growthText(nwGrowth)} since {wRows[0].label}</small></div>
+        <div><span>FIRE portfolio</span><strong>{money(last.fire)}</strong><small>{growthText(fireGrowth)} since {wRows[0].label}</small></div>
+        <div><span>FIRE portfolio grows about</span><strong>{fireGrowth ? money(fireGrowth.perMonth) : "—"}</strong><small>a month on average (investing + market growth)</small></div>
+        <div><span>Gap to your FIRE number</span><strong>{money(Math.max(0, last.target - last.fire))}</strong><small>{last.target > 0 ? `${Math.min(100, (last.fire / last.target) * 100).toFixed(1)}% of the way` : ""}</small></div>
+      </div>
+      <ul className="tr-legend"><li><i style={{ background: "#257de0" }} />Net worth</li><li><i style={{ background: "#00b894" }} />FIRE portfolio</li><li><i className="tr-dash-key" />FIRE number</li></ul>
+      <div className="tr-chart">
+        <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} role="img" aria-label="Lines: net worth and FIRE portfolio over time, with the FIRE number">
+          {[0, 0.25, 0.5, 0.75, 1].map(t => <g key={t}><line x1={M.left} x2={W - M.right} y1={wy(wMax * t)} y2={wy(wMax * t)} className="tr-grid" /><text x={M.left - 8} y={wy(wMax * t) + 4} textAnchor="end" className="tr-axis">{shortMoney(wMax * t, code)}</text></g>)}
+          {wHover !== null && <line x1={wx(wHover)} x2={wx(wHover)} y1={M.top} y2={M.top + innerH} className="tr-crosshair" />}
+          <path d={wPath(r => r.target)} className="tr-ref" fill="none" />
+          <path d={wPath(r => r.netWorth)} fill="none" stroke="#257de0" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+          <path d={wPath(r => r.fire)} fill="none" stroke="#00b894" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+          {wRows.length <= 24 && wRows.map((r, i) => <g key={r.key}><circle cx={wx(i)} cy={wy(r.netWorth)} r={wHover === i ? 5 : 3} fill="#257de0" stroke="#fff" strokeWidth={2} /><circle cx={wx(i)} cy={wy(r.fire)} r={wHover === i ? 5 : 3} fill="#00b894" stroke="#fff" strokeWidth={2} /></g>)}
+          <text x={wx(wRows.length - 1)} y={wy(last.netWorth) - 10} textAnchor="end" className="tr-direct">{shortMoney(last.netWorth, code)}</text>
+          <text x={wx(wRows.length - 1)} y={wy(last.fire) + (wy(last.fire) - wy(last.netWorth) < 22 ? 22 : -10)} textAnchor="end" className="tr-direct">{shortMoney(last.fire, code)}</text>
+          <line x1={M.left} x2={W - M.right} y1={M.top + innerH} y2={M.top + innerH} className="tr-baseline" />
+          {wRows.map((r, i) => (i === wRows.length - 1 || (i % wLabelEvery === 0 && wRows.length - 1 - i >= wLabelEvery)) && <text key={r.key} x={wx(i)} y={H - 10} textAnchor="middle" className="tr-axis">{r.label}</text>)}
+          {wRows.map((r, i) => <rect key={`w-${r.key}`} x={M.left + wBand * i} y={M.top} width={wBand} height={innerH} fill="transparent" tabIndex={0} role="button" aria-label={`${r.label}: net worth ${money(r.netWorth)}, FIRE portfolio ${money(r.fire)}`} onMouseEnter={() => setWHover(i)} onFocus={() => setWHover(i)} onClick={() => setWHover(i)} onMouseLeave={() => setWHover(null)} onBlur={() => setWHover(null)} />)}
+        </svg>
+        {wTip && wHover !== null && <div className="tr-tip" style={{ left: `${Math.min(78, Math.max(4, (wx(wHover) / W) * 100 - 11))}%` }} role="status"><strong>{wTip.label}</strong><span><i style={{ background: "#257de0" }} />Net worth <b>{money(wTip.netWorth)}</b></span><span><i style={{ background: "#00b894" }} />FIRE portfolio <b>{money(wTip.fire)}</b></span><span>FIRE number <b>{money(wTip.target)}</b></span></div>}
+      </div>
+      <details className="tr-table"><summary>Show as table</summary><div className="tr-table-wrap"><table><thead><tr><th>{period === "month" ? "Month" : "Quarter"}</th><th>Net worth</th><th>FIRE portfolio</th><th>FIRE number</th></tr></thead><tbody>{[...wRows].reverse().map(r => <tr key={r.key}><td>{r.label}</td><td>{money(r.netWorth)}</td><td>{money(r.fire)}</td><td>{money(r.target)}</td></tr>)}</tbody></table></div></details>
+      <p className="tr-note">One snapshot a month, saved when you open Home.{period === "quarter" ? " Quarterly shows the latest balance in each quarter." : ""} Growth includes new investing and market changes.</p>
+    </>}
+  </section>;
+
   const hovered = hover !== null ? rows[hover] : null;
   const tipLeft = hover !== null ? `${Math.min(78, Math.max(4, (cx(hover) / W) * 100 - 11))}%` : "0";
 
@@ -113,8 +163,8 @@ export default function TrendsPage() {
   </div>;
 
   return <><Header /><main className="trends-page container">
-    <div className="profile-heading"><p className="eyebrow"><BarChart3 size={14} /> MONEY TRENDS</p><h1>Where your money goes, month after month.</h1><p>Built from your monthly check-ins. See your saving habit grow, and spot the months where money slipped away.</p></div>
-    {loading ? <p className="profile-status">Loading your trends…</p> : message ? <p className="profile-status">{message}</p> : months.length < 2 ? <section className="profile-card tr-empty">
+    <div className="profile-heading"><p className="eyebrow"><BarChart3 size={14} /> MONEY TRENDS</p><h1>Where your money goes, month after month.</h1><p>How your wealth grows, where each month’s money goes, and the months where money slipped away.</p></div>
+    {loading ? <p className="profile-status">Loading your trends…</p> : message ? <p className="profile-status">{message}</p> : <>{wealthSection}{months.length < 2 ? <section className="profile-card tr-empty">
       <h2>📈 Your trends appear after 2 check-ins</h2>
       <p>{months.length === 1 ? "You’ve logged 1 month. Log next month and your charts start here." : "Log your first month to start your trend line. It takes 30 seconds and it’s pre-filled."}</p>
       <Link href="/month" className="button button-primary">Log a month</Link>
@@ -187,6 +237,6 @@ export default function TrendsPage() {
         </li>)}</ul> : <p className="side-empty">Log spending <Link href="/month">by category in This month</Link> (or import a statement CSV) to see which categories take the most, and whether they’re shrinking.</p>}
       </section>
       <p className="journey-note">Months you didn’t log are skipped. Figures come from your check-ins: take-home, EPF/NPS from salary, spending (excluding investing and EMIs), investing and EMIs.</p>
-    </>}
+    </>}</>}
   </main><Footer /></>;
 }

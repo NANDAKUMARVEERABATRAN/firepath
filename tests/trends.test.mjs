@@ -57,3 +57,22 @@ test("axis helpers", () => {
   assert.equal(niceMax(87000), 100000);
   assert.equal(niceMax(230000), 250000);
 });
+
+import { growth, wealthRows } from "../lib/trends.ts";
+test("wealth over time: monthly points, quarterly = latest balance in each quarter, growth per month", () => {
+  const snaps = [
+    { month_start: "2026-01-01", net_worth: 30000000, fire_portfolio: 9000000, fire_target: 24000000 },
+    { month_start: "2026-02-01", net_worth: 30500000, fire_portfolio: 9300000, fire_target: 24000000 },
+    { month_start: "2026-03-01", net_worth: 31000000, fire_portfolio: 9600000, fire_target: 24100000 },
+    { month_start: "2026-05-01", net_worth: 32000000, fire_portfolio: 10300000, fire_target: 24200000 },
+  ];
+  const monthly = wealthRows(snaps, "month");
+  assert.deepEqual(monthly.map(r => r.label), ["Jan 26", "Feb 26", "Mar 26", "May 26"]);
+  const quarterly = wealthRows(snaps, "quarter");
+  assert.deepEqual(quarterly.map(r => [r.label, r.fire]), [["Q1 26", 9600000], ["Q2 26", 10300000]]); // balances not summed
+  const g = growth(monthly, r => r.fire);
+  assert.equal(g.change, 1300000);
+  assert.equal(Math.round(g.percent * 10) / 10, 14.4);
+  assert.equal(g.perMonth, 325000); // over 4 months (Jan → May)
+  assert.equal(growth(monthly.slice(0, 1), r => r.fire), null);
+});

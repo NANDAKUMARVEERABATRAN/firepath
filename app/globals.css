@@ -695,3 +695,7 @@ button.tm-limit{border:0;padding:0;cursor:pointer;text-align:left;width:100%;fon
 .tm-limit-actions{display:flex;gap:12px;align-items:center}.tm-limit-actions .button{padding:8px 16px}
 @media(max-width:640px){.tm-cat-headings{display:none}}
 .nw-items{display:block;font-size:11px;color:#8896a3;margin:-4px 0 6px 18px;line-height:1.45}
+.tr-wealth .tr-head{flex-wrap:wrap}
+.tr-wealth-facts{margin:10px 0 6px}
+.tr-wealth-facts strong{font-size:20px}
+.tr-dash-key{display:inline-block;width:16px;height:0;border-top:2px dashed #9fb3c8}

@@ -94,3 +94,41 @@ export function niceMax(value: number): number {
   const f = value / exp;
   return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * exp;
 }
+
+/* ---------------- Wealth over time (from monthly progress snapshots) ---------------- */
+
+export type WealthSnapshot = { month_start: string; net_worth: number; fire_portfolio: number; fire_target: number };
+export type WealthRow = { key: string; label: string; netWorth: number; fire: number; target: number };
+
+/**
+ * One point per month, or per quarter (the latest snapshot in each quarter — balances are a point in time,
+ * so they are never added up).
+ */
+export function wealthRows(snapshots: WealthSnapshot[], period: "month" | "quarter"): WealthRow[] {
+  const sorted = [...snapshots].sort((a, b) => a.month_start.localeCompare(b.month_start));
+  const keyOf = (s: WealthSnapshot) => {
+    const [y, m] = s.month_start.split("-").map(Number);
+    return period === "month" ? `${y}-${String(m).padStart(2, "0")}` : `${y}-Q${Math.ceil(m / 3)}`;
+  };
+  const latest = new Map<string, WealthSnapshot>();
+  for (const s of sorted) latest.set(keyOf(s), s); // later months overwrite earlier ones in the same quarter
+  return [...latest.entries()].map(([key, s]) => {
+    const [y, rest] = key.split("-");
+    const label = period === "month" ? `${MONTHS[Number(rest) - 1]} ${y.slice(2)}` : `${rest} ${y.slice(2)}`;
+    return { key, label, netWorth: s.net_worth, fire: s.fire_portfolio, target: s.fire_target };
+  });
+}
+
+export type Growth = { from: number; to: number; change: number; percent: number | null; perMonth: number };
+
+/** Change between the first and last point, plus the average gain per month across the span. */
+export function growth(rows: WealthRow[], pick: (r: WealthRow) => number): Growth | null {
+  if (rows.length < 2) return null;
+  const first = rows[0], last = rows.at(-1)!;
+  const monthsBetween = (a: string, b: string) => {
+    const toIndex = (k: string) => { const [y, r] = k.split("-"); return Number(y) * 12 + (r.startsWith("Q") ? Number(r.slice(1)) * 3 - 1 : Number(r) - 1); };
+    return Math.max(1, toIndex(b) - toIndex(a));
+  };
+  const from = pick(first), to = pick(last), change = to - from;
+  return { from, to, change, percent: from > 0 ? (change / from) * 100 : null, perMonth: change / monthsBetween(first.key, last.key) };
+}
