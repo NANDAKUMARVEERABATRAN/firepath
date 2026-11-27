@@ -6,7 +6,7 @@ import { shortCountryMoney, type CountryCode } from "./country.ts";
  * savings rate = (earned − spent) ÷ earned; "spent" excludes investing and loan EMIs (as in the check-in).
  */
 
-export type TrendCheckin = { month_start: string; income: number; expenses: number; invested: number; debt_paid: number; salary_pf?: number; salary_pension?: number };
+export type TrendCheckin = { month_start: string; income: number; expenses: number; invested: number; debt_paid: number; salary_pf?: number; salary_pension?: number; extra_invested?: number };
 
 export type TrendRow = {
   key: string; // "2026-11" or "2026"
@@ -38,7 +38,7 @@ export function monthlyRows(checkins: TrendCheckin[]): TrendRow[] {
     .sort((a, b) => a.month_start.localeCompare(b.month_start))
     .map(c => {
       const [y, m] = c.month_start.split("-");
-      return build(`${y}-${m}`, `${MONTHS[Number(m) - 1]} ${y.slice(2)}`, 1, n(c.income), n(c.salary_pf) + n(c.salary_pension), n(c.invested), n(c.expenses), n(c.debt_paid));
+      return build(`${y}-${m}`, `${MONTHS[Number(m) - 1]} ${y.slice(2)}`, 1, n(c.income) + n(c.extra_invested), n(c.salary_pf) + n(c.salary_pension), n(c.invested) + n(c.extra_invested), n(c.expenses), n(c.debt_paid)); // invested bonuses count as earned and invested
     });
 }
 

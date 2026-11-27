@@ -1,3 +1,5 @@
+import { investingPerMonth } from "./extraInvesting.ts";
+
 export type FinancialProfile = {
   age: number | null;
   monthly_income: number;
@@ -14,6 +16,8 @@ export type FinancialProfile = {
   liabilities: number;
   emergency_fund: number;
   monthly_investment: number;
+  /** Bonus/extra earnings invested per year (profile, or logged one-offs over the last 12 months). */
+  yearly_extra_investment?: number;
   has_health_insurance: boolean;
   has_term_insurance: boolean;
   has_dependents?: boolean;
@@ -42,7 +46,7 @@ export type ScoreCategory = { name: string; score: number; max: number; explanat
 const clamp = (value: number, max: number) => Math.min(max, Math.max(0, value));
 
 /** Everything earned in a month: take-home that reaches the bank + retirement savings deducted from salary. */
-export const totalIncome = (profile: Pick<FinancialProfile, "monthly_income" | "monthly_salary_savings">) => Math.max(0, profile.monthly_income) + Math.max(0, profile.monthly_salary_savings ?? 0);
+export const totalIncome = (profile: Pick<FinancialProfile, "monthly_income" | "monthly_salary_savings" | "yearly_extra_investment">) => Math.max(0, profile.monthly_income) + Math.max(0, profile.monthly_salary_savings ?? 0) + Math.max(0, profile.yearly_extra_investment ?? 0) / 12; // + the invested part of bonuses, spread monthly
 
 export function getFireScore(profile: FinancialProfile): { score: number; categories: ScoreCategory[]; netWorth: number; savingsRate: number; emergencyMonths: number; fireTarget: number; fireProgress: number; withdrawalRate: number; debtServiceRate: number } {
   const income = totalIncome(profile);
@@ -50,7 +54,7 @@ export function getFireScore(profile: FinancialProfile): { score: number; catego
   const emergencyMonths = lifestyleExpenses(profile) > 0 ? profile.emergency_fund / lifestyleExpenses(profile) : 0;
   const savingsRate = income > 0 ? clamp(((income - expenses) / income) * 100, 100) : 0;
   // Salary deductions (EPF/NPS) are investing too, even though they're not FIRE-accessible until later.
-  const investingRate = income > 0 ? clamp(((profile.monthly_investment + (profile.monthly_salary_savings ?? 0)) / income) * 100, 100) : 0;
+  const investingRate = income > 0 ? clamp(((investingPerMonth(profile) + (profile.monthly_salary_savings ?? 0)) / income) * 100, 100) : 0;
   const netWorth = profile.assets - profile.liabilities;
   const fireAssets = Math.max(0, profile.investableAssets ?? profile.fire_accessible_assets ?? profile.assets);
   const withdrawalRate = (profile.withdrawal_rate ?? 3.5) / 100;

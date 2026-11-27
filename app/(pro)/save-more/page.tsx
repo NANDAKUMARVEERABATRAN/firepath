@@ -68,13 +68,14 @@ export default function SaveMorePage() {
     const fromSalary = Math.max(0, flow.monthly_salary_savings ?? 0);
     const expenses = flow.monthly_expenses;
     const invested = flow.monthly_investment; // invested from the bank (FIRE-accessible)
+    const extraPerMonth = Math.max(0, flow.yearly_extra_investment ?? 0) / 12; // invested bonuses, spread monthly
     const rate = savingsRate(income, expenses);
     const realReturn = state.plan.expected_return - state.plan.inflation_rate;
     const withdrawal = state.plan.withdrawal_rate;
     const accessible = Math.max(0, base.investableAssets ?? base.assets);
     // Idle money is measured in the bank: take-home minus spending minus bank investments.
     const targetMonthly = targetExpenses(flow); // the same spending the FIRE number is built on
-    return { income, fromSalary, targetMonthly, expenses, invested, rate, realReturn, withdrawal, accessible, idle: idleMoney(flow.monthly_income, expenses, invested) };
+    return { income, fromSalary, targetMonthly, expenses, invested, extraPerMonth, rate, realReturn, withdrawal, accessible, idle: idleMoney(flow.monthly_income, expenses, invested) };
   }, [state]);
 
   const pickedTotal = Object.values(picked).reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
@@ -135,7 +136,7 @@ export default function SaveMorePage() {
   // measure the loot from the pre-pledge numbers so it isn't counted twice.
   const adj = committed?.applied && sincePledge.length === 0 ? committed.monthly_total : 0;
   const baseExpenses = numbers ? numbers.expenses + adj : 0;
-  const baseInvested = numbers ? Math.max(0, numbers.invested - adj) : 0;
+  const baseInvested = numbers ? Math.max(0, numbers.invested - adj) + numbers.extraPerMonth : 0;
   const tier = numbers?.rate !== null && numbers ? getSavingsTier(numbers.rate!) : null;
   const next = numbers?.rate !== null && numbers ? getNextTier(numbers.rate!) : null;
   const baseRate = numbers ? savingsRate(numbers.income, baseExpenses) : null;

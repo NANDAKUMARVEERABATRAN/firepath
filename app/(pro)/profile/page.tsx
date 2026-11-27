@@ -25,6 +25,7 @@ type Profile = {
   liabilities: string;
   emergency_fund: string;
   monthly_investment: string;
+  yearly_extra_investment: string;
   monthly_salary_pf: string;
   monthly_salary_pension: string;
   has_health_insurance: boolean;
@@ -37,10 +38,10 @@ type Profile = {
   fire_why_note: string;
   dream_age: string;
 };
-type MoneyKey = "monthly_income" | "monthly_salary_pf" | "monthly_salary_pension" | "monthly_investment_income" | "monthly_expenses" | "other_assets" | "fire_accessible_assets" | "later_retirement_assets" | "liabilities" | "emergency_fund" | "monthly_investment" | "health_cover_amount" | "term_cover_amount";
+type MoneyKey = "monthly_income" | "monthly_salary_pf" | "monthly_salary_pension" | "monthly_investment_income" | "monthly_expenses" | "other_assets" | "fire_accessible_assets" | "later_retirement_assets" | "liabilities" | "emergency_fund" | "monthly_investment" | "yearly_extra_investment" | "health_cover_amount" | "term_cover_amount";
 type BoolKey = "has_health_insurance" | "has_term_insurance" | "has_dependents";
 
-const emptyProfile: Profile = { age: "", monthly_income: "", monthly_investment_income: "", monthly_expenses: "", other_assets: "", fire_accessible_assets: "", later_retirement_assets: "", liabilities: "", emergency_fund: "", monthly_investment: "", monthly_salary_pf: "0", monthly_salary_pension: "0", has_health_insurance: false, has_term_insurance: false, has_dependents: false, health_cover_amount: "", term_cover_amount: "", currency: "INR", fire_reasons: [], fire_why_note: "", dream_age: "" };
+const emptyProfile: Profile = { age: "", monthly_income: "", monthly_investment_income: "", monthly_expenses: "", other_assets: "", fire_accessible_assets: "", later_retirement_assets: "", liabilities: "", emergency_fund: "", monthly_investment: "", yearly_extra_investment: "", monthly_salary_pf: "0", monthly_salary_pension: "0", has_health_insurance: false, has_term_insurance: false, has_dependents: false, health_cover_amount: "", term_cover_amount: "", currency: "INR", fire_reasons: [], fire_why_note: "", dream_age: "" };
 
 const num = (value: string) => Math.max(0, Number(value || 0));
 
@@ -107,6 +108,8 @@ const questions: (Question & { show?: (p: Profile) => boolean; feedback?: (p: Pr
   { id: "sip", section: "Money flow", emoji: "📈", title: "How much do you invest every month?", subtitle: "SIPs, stocks, RDs, PPF, extra NPS: money you invest from your bank. Not EPF/NPS deducted from salary (already counted).", kind: "money", key: "monthly_investment", optional: true, chips: [{ label: "Not yet", value: 0 }],
     feedback: p => { const income = num(p.monthly_income); const sip = num(p.monthly_investment); if (!income || !p.monthly_investment) return null; const pct = sip / income * 100; return pct >= 20 ? `💪 ${pct.toFixed(0)}% of your income — you’re paying yourself first!` : sip > 0 ? `${pct.toFixed(0)}% of your income. Growing this toward 20% is the fastest FIRE lever.` : `No problem — even ${CUR === "IN" ? "a ₹500 SIP" : "AED 100 a month"} starts the habit. We’ll show you what it does.`; } },
 
+  { id: "bonus", section: "Money flow", emoji: "🎁", title: "How much of your bonus or extra earnings do you invest in a year?", subtitle: "Annual bonus, incentives, RSU sales, freelance or gifts that you put into investments. Only the part you invest. We spread it over the year for your FIRE date.", kind: "money", key: "yearly_extra_investment", optional: true, chips: [{ label: "None", value: 0 }],
+    feedback: p => { const extra = num(p.yearly_extra_investment); if (!extra) return null; return `🎁 That’s like an extra ${CUR === "IN" ? "₹" : "AED "}${Math.round(extra / 12).toLocaleString(CUR === "IN" ? "en-IN" : "en-AE")} a month working for your freedom.`; } },
   { id: "emergency", section: "What you own", emoji: "🛟", title: "How much cash is set aside for emergencies?", subtitle: "Savings account or liquid fund money you don’t touch unless something goes wrong.", kind: "money", key: "emergency_fund", optional: true, chips: [{ label: "None yet", value: 0 }],
     feedback: p => { const exp = num(p.monthly_expenses); if (!exp || !p.emergency_fund) return null; const months = num(p.emergency_fund) / exp; return months >= 6 ? `🛟 ${months.toFixed(1)} months of expenses covered — a full safety net!` : months >= 1 ? `${months.toFixed(1)} months covered. Six months is the full safety net.` : "Building even one month of expenses is a great first milestone."; } },
   { id: "fire-funds", section: "What you own", emoji: "🏦", title: "How much do you have in investments you could use?", subtitle: "Mutual funds, stocks, FDs, gold, other savings — not counting your emergency fund.", kind: "money", key: "fire_accessible_assets", optional: true, chips: [{ label: "None yet", value: 0 }],
@@ -135,6 +138,7 @@ export default function ProfilePage() {
   const [step, setStep] = useState(0); // index into visible questions; === visible.length means review
   const [returning, setReturning] = useState(false);
   const [salaryColumns, setSalaryColumns] = useState(false); // migration 0026 applied?
+  const [extraColumn, setExtraColumn] = useState(false); // migration 0035 applied?
   const [runSection, setRunSection] = useState<string | null>(null);
   const [celebrate, setCelebrate] = useState<{ title: string; detail: string } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -170,12 +174,13 @@ export default function ProfilePage() {
         else if (!data) setProfile(current => ({ ...current, currency: getCountry(readStoredCountry() ?? detectCountry()).currency })); // new profile: start in the visitor's country
         else if (data) {
           setSalaryColumns("monthly_salary_pf" in data);
+          setExtraColumn("yearly_extra_investment" in data);
           const assets = Number(data.assets ?? 0), emergency = Number(data.emergency_fund ?? 0), fire = Number(data.fire_accessible_assets ?? 0), later = Number(data.later_retirement_assets ?? 0);
           setProfile({
             age: data.age?.toString() ?? "", monthly_income: data.monthly_income?.toString() ?? "", monthly_investment_income: data.monthly_investment_income?.toString() ?? "0",
             monthly_expenses: data.monthly_expenses?.toString() ?? "", other_assets: String(Math.max(0, assets - emergency - fire - later)),
             fire_accessible_assets: data.fire_accessible_assets?.toString() ?? "", later_retirement_assets: data.later_retirement_assets?.toString() ?? "",
-            liabilities: data.liabilities?.toString() ?? "", emergency_fund: data.emergency_fund?.toString() ?? "", monthly_investment: data.monthly_investment?.toString() ?? "",
+            liabilities: data.liabilities?.toString() ?? "", emergency_fund: data.emergency_fund?.toString() ?? "", monthly_investment: data.monthly_investment?.toString() ?? "", yearly_extra_investment: data.yearly_extra_investment ? String(data.yearly_extra_investment) : "",
             monthly_salary_pf: data.monthly_salary_pf?.toString() ?? "0", monthly_salary_pension: data.monthly_salary_pension?.toString() ?? "0",
             has_health_insurance: data.has_health_insurance ?? false, has_term_insurance: data.has_term_insurance ?? false, has_dependents: data.has_dependents ?? false,
             health_cover_amount: data.health_cover_amount?.toString() ?? "", term_cover_amount: data.term_cover_amount?.toString() ?? "", currency: data.currency,
@@ -230,6 +235,7 @@ export default function ProfilePage() {
       monthly_income: num(profile.monthly_income), monthly_investment_income: num(profile.monthly_investment_income), monthly_expenses: num(profile.monthly_expenses),
       assets: emergency + fire + later + num(profile.other_assets), fire_accessible_assets: fire, later_retirement_assets: later,
       liabilities: num(profile.liabilities), emergency_fund: emergency, monthly_investment: num(profile.monthly_investment),
+      ...(extraColumn || num(profile.yearly_extra_investment) > 0 ? { yearly_extra_investment: num(profile.yearly_extra_investment) } : {}),
       ...(salaryColumns || num(profile.monthly_salary_pf) + num(profile.monthly_salary_pension) > 0 ? { monthly_salary_pf: num(profile.monthly_salary_pf), monthly_salary_pension: num(profile.monthly_salary_pension) } : {}),
       has_health_insurance: profile.has_health_insurance, has_term_insurance: profile.has_dependents && profile.has_term_insurance, has_dependents: profile.has_dependents,
       health_cover_amount: profile.has_health_insurance ? num(profile.health_cover_amount) : 0, term_cover_amount: profile.has_dependents && profile.has_term_insurance ? num(profile.term_cover_amount) : 0,

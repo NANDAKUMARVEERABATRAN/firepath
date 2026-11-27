@@ -23,6 +23,7 @@ import { analyzeGoal, goalCategories, statusLabel } from "@/lib/goals";
 import { getLessonOfDay, lessons as allLessons } from "@/lib/wisdom";
 import { pickLesson, principlesInAction, type CoachSignals } from "@/lib/bookCoach";
 import { monthsToAutoFill, usualNumbers } from "@/lib/autoFill";
+import { investingPerMonth } from "@/lib/extraInvesting";
 import { FOUNDING, foundingOpen } from "@/lib/subscription";
 import { fireStyles, getWhyResult, styleTip } from "@/lib/fireWhy";
 import { inFutureMoney } from "@/lib/inflation";
@@ -131,7 +132,7 @@ export default function JourneyPage() {
     const earned = totalIncome(p);
     return {
       savingsRate: game.rate ?? 0,
-      investRate: earned > 0 ? ((p.monthly_investment + (p.monthly_salary_savings ?? 0)) / earned) * 100 : 0,
+      investRate: earned > 0 ? ((investingPerMonth(p) + (p.monthly_salary_savings ?? 0)) / earned) * 100 : 0,
       emergencyMonths: game.score.emergencyMonths,
       highInterestDebt: p.highInterestDebt ?? 0,
       protectedCover: Boolean(p.has_health_insurance && (p.health_cover_amount ?? 0) > 0 && (!p.has_dependents || (p.has_term_insurance && (p.term_cover_amount ?? 0) > 0))),
@@ -274,7 +275,7 @@ export default function JourneyPage() {
           <div>
             <p className="eyebrow">YOUR WHY · {style.name.toUpperCase()} · PURPOSE {result.purposeScore}/100</p>
             <h2>{why.note ? `“${why.note}”` : result.reasons.map(reason => reason.label).slice(0, 2).join(" · ")}</h2>
-            <p>{why.dreamAge ? (onTrack ? `✅ You’re on track to be free by your dream age of ${why.dreamAge}.` : needed !== null ? `🎯 Dream age ${why.dreamAge}: invest about ${money(needed)}/month (now ${money(game.profile.monthly_investment)}) to get there.` : `🎯 Dream age ${why.dreamAge} is a stretch — Lean or Barista FIRE could bring it within reach.`) : styleTip(result.style, game.profile.currency)}</p>
+            <p>{why.dreamAge ? (onTrack ? `✅ You’re on track to be free by your dream age of ${why.dreamAge}.` : needed !== null ? `🎯 Dream age ${why.dreamAge}: invest about ${money(needed)}/month (now ${money(investingPerMonth(game.profile))}) to get there.` : `🎯 Dream age ${why.dreamAge} is a stretch — Lean or Barista FIRE could bring it within reach.`) : styleTip(result.style, game.profile.currency)}</p>
           </div>
           <a href="/profile" className="text-link">Edit</a>
         </section>;
@@ -346,9 +347,9 @@ export default function JourneyPage() {
       {state && <ProgressHistory snapshots={state.snapshots} />}
       {state && state.checkins.length >= 2 && <a href="/trends" className="saver-strip tone-ok trends-link"><span className="saver-strip-emoji">📊</span><div><small>MONEY TRENDS</small><strong>See where your money went, month after month</strong><span>Savings rate, spending vs investing, and your best months.</span></div></a>}
 
-      {state && <StepUpPlan userId={state.userId} age={game.profile.age} accessible={Math.max(0, game.profile.investableAssets ?? game.profile.assets)} monthlyInvestment={game.profile.monthly_investment} target={game.metrics.fireTarget} plan={state.plan} money={money} onSaved={(percent, month) => setState(current => current ? { ...current, plan: { ...current.plan, step_up_percent: percent, step_up_month: month } } : current)} />}
+      {state && <StepUpPlan userId={state.userId} age={game.profile.age} accessible={Math.max(0, game.profile.investableAssets ?? game.profile.assets)} monthlyInvestment={investingPerMonth(game.profile)} target={game.metrics.fireTarget} plan={state.plan} money={money} onSaved={(percent, month) => setState(current => current ? { ...current, plan: { ...current.plan, step_up_percent: percent, step_up_month: month } } : current)} />}
 
-      <FireSlider age={game.profile.age} accessible={Math.max(0, game.profile.investableAssets ?? game.profile.assets)} monthlyInvestment={game.profile.monthly_investment} target={game.metrics.fireTarget} realReturn={(state?.plan.expected_return ?? 10) - (state?.plan.inflation_rate ?? 6)} currency={game.profile.currency} />
+      <FireSlider age={game.profile.age} accessible={Math.max(0, game.profile.investableAssets ?? game.profile.assets)} monthlyInvestment={investingPerMonth(game.profile)} target={game.metrics.fireTarget} realReturn={(state?.plan.expected_return ?? 10) - (state?.plan.inflation_rate ?? 6)} currency={game.profile.currency} />
 
       <section className="journey-grid">
         <div>

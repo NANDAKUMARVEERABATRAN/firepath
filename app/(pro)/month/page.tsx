@@ -14,8 +14,8 @@ import { parseBudgetCsv, transactionFingerprint, type ParsedBudgetRow } from "@/
 import { spendingCheckup } from "@/lib/spendingCheckup";
 import { categorySums, MONTH_CATEGORIES, MONTH_TOTAL_NOTE, monthSummary, planCategoryWrites, spendingTotal, type Entry, type MonthCategory } from "@/lib/monthLog";
 
-type Form = { takeHome: string; salaryPf: string; salaryPension: string; investmentIncome: string; spentTotal: string; invested: string; emis: string; note: string };
-const emptyForm: Form = { takeHome: "", salaryPf: "0", salaryPension: "0", investmentIncome: "0", spentTotal: "", invested: "", emis: "", note: "" };
+type Form = { takeHome: string; salaryPf: string; salaryPension: string; investmentIncome: string; spentTotal: string; invested: string; extraInvested: string; emis: string; note: string };
+const emptyForm: Form = { takeHome: "", salaryPf: "0", salaryPension: "0", investmentIncome: "0", spentTotal: "", invested: "", extraInvested: "", emis: "", note: "" };
 const n = (v: string) => Math.max(0, Number(v || 0));
 const monthOf = (offset = 0, base?: string) => { const d = base ? new Date(`${base}T12:00:00`) : new Date(); d.setDate(1); d.setMonth(d.getMonth() + offset); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`; };
 const todayIso = () => new Date().toLocaleDateString("en-CA");
@@ -47,6 +47,7 @@ export default function ThisMonthPage() {
   const [logged, setLogged] = useState(false);
   const [history, setHistory] = useState<{ month_start: string; invested: number }[]>([]);
   const [salaryColumns, setSalaryColumns] = useState(false);
+  const [extraColumn, setExtraColumn] = useState(false); // migration 0035 applied?
   const [source, setSource] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -92,7 +93,8 @@ export default function ThisMonthPage() {
       setValued(Array.isArray(profile.data?.valued_categories) ? profile.data.valued_categories : []);
       setValuedColumn(Boolean(profile.data && "valued_categories" in profile.data));
       const rows = checkins.data ?? [];
-      setHistory(rows.map(r => ({ month_start: r.month_start, invested: Number(r.invested) })));
+      setHistory(rows.map(r => ({ month_start: r.month_start, invested: Number(r.invested) + Number(r.extra_invested ?? 0) })));
+      setExtraColumn(Boolean(rows[0] && "extra_invested" in rows[0]));
       setCode(countryFromCurrency(profile.data?.currency));
       setSalaryColumns(Boolean(profile.data && "monthly_salary_pf" in profile.data));
       const list = ((monthEntries.data ?? []) as Entry[]).map(e => ({ ...e, amount: Number(e.amount), note: e.note ?? "" }));
@@ -112,7 +114,7 @@ export default function ThisMonthPage() {
       setLogged(Boolean(current));
       let next: Form;
       if (current) {
-        next = { takeHome: String(current.income), salaryPf: String(current.salary_pf ?? 0), salaryPension: String(current.salary_pension ?? 0), investmentIncome: String(current.investment_income ?? 0), spentTotal: String(current.expenses), invested: String(current.invested), emis: String(current.debt_paid), note: current.note ?? "" };
+        next = { takeHome: String(current.income), salaryPf: String(current.salary_pf ?? 0), salaryPension: String(current.salary_pension ?? 0), investmentIncome: String(current.investment_income ?? 0), spentTotal: String(current.expenses), invested: String(current.invested), extraInvested: Number(current.extra_invested ?? 0) > 0 ? String(current.extra_invested) : "", emis: String(current.debt_paid), note: current.note ?? "" };
         setSource(current.auto_filled ? `📝 ${new Date(`${m}T12:00:00`).toLocaleDateString("en-IN", { month: "long" })} wasn’t logged, so we filled in your usual numbers. Check them, change anything that was different, and save to confirm (+60 XP).` : `You already logged ${new Date(`${m}T12:00:00`).toLocaleDateString("en-IN", { month: "long" })}. Change anything and save again.`);
       } else if (before) {
         next = { ...emptyForm, takeHome: String(before.income), salaryPf: String(before.salary_pf ?? 0), salaryPension: String(before.salary_pension ?? 0), investmentIncome: String(before.investment_income ?? 0), invested: String(before.invested), emis: String(before.debt_paid) };
@@ -153,7 +155,8 @@ export default function ThisMonthPage() {
   const categoryTotal = MONTH_CATEGORIES.reduce((s, c) => s + shown(c.id), 0);
   const prevTotal = prevSums ? spendingTotal(prevSums) : 0;
   const spent = mode === "category" ? categoryTotal : n(form.spentTotal);
-  const summary = monthSummary({ takeHome: n(form.takeHome), salaryPf: n(form.salaryPf), salaryPension: n(form.salaryPension), spent, invested: n(form.invested), emis: n(form.emis) });
+  // A bonus that was invested comes in and goes straight out: it adds to earnings and investing, not to the bank balance.
+  const summary = monthSummary({ takeHome: n(form.takeHome) + n(form.extraInvested), salaryPf: n(form.salaryPf), salaryPension: n(form.salaryPension), spent, invested: n(form.invested) + n(form.extraInvested), emis: n(form.emis) });
   const monthName = new Date(`${month}T12:00:00`).toLocaleDateString("en-IN", { month: "long", year: "numeric" });
   const isCurrent = month === monthOf();
   const individual = entries.filter(e => e.note !== MONTH_TOTAL_NOTE && MONTH_CATEGORIES.some(c => c.id === e.category));
@@ -180,10 +183,12 @@ export default function ThisMonthPage() {
         user_id: userId, month_start: month, income: n(form.takeHome), investment_income: Math.min(n(form.investmentIncome), n(form.takeHome)), expenses: spent, invested: n(form.invested), debt_paid: n(form.emis), note: form.note.trim().slice(0, 500), updated_at: new Date().toISOString(),
         ...(salaryColumns || salaryChanged ? { salary_pf: n(form.salaryPf), salary_pension: n(form.salaryPension) } : {}),
         ...(autoRow !== null ? { auto_filled: false } : {}), // saving confirms an auto-filled month
+        ...(n(form.extraInvested) > 0 || extraColumn ? { extra_invested: n(form.extraInvested) } : {}),
       }, { onConflict: "user_id,month_start" });
+      if (error && /extra_invested/.test(error.message)) throw new Error("Run supabase/migrations/202611280035_extra_investing.sql in Supabase to save bonus investments.");
       if (error) throw /salary_p/.test(error.message) ? new Error("Run supabase/migrations/202611260026_salary_savings.sql in Supabase to save EPF/NPS.") : error;
       if (salaryColumns && isCurrent) await supabase.from("financial_profiles").update({ monthly_salary_pf: n(form.salaryPf), monthly_salary_pension: n(form.salaryPension) }).eq("user_id", userId);
-      const streak = getInvestmentStreak([{ month_start: month, invested: n(form.invested) }, ...history.filter(h => h.month_start !== month)]);
+      const streak = getInvestmentStreak([{ month_start: month, invested: n(form.invested) + n(form.extraInvested) }, ...history.filter(h => h.month_start !== month)]);
       setCelebrate({ title: logged && !autoRow ? `${monthName.split(" ")[0]} updated ✓` : `${monthName.split(" ")[0]} logged! +60 XP`, detail: `${Math.round(summary.savingsRate)}% savings rate this month.${streak > 0 ? ` 🔥 ${streak}-month investing streak.` : ""} Your score and freedom date are updated on Home.` });
       await load(month);
     } catch (e) { setMessage(e instanceof Error ? e.message : String((e as { message?: string })?.message ?? "Could not save.")); }
@@ -353,6 +358,7 @@ export default function ThisMonthPage() {
         <h2>📈 Investing &amp; EMIs</h2>
         <div className="tm-grid">
           <Amount label="Invested from your bank" hint="SIPs, stocks, PPF, extra NPS. Not salary EPF/NPS" value={form.invested} onChange={set("invested")} symbol={country.symbol} />
+          <Amount label="Bonus or extra money invested (one-off)" hint="Bonus, incentive, RSU sale or gift you invested this month. Keep it out of take-home above" value={form.extraInvested} onChange={set("extraInvested")} symbol={country.symbol} />
           <Amount label="Loan EMIs & card payments" hint="Home, car, personal, gold loans, credit card" value={form.emis} onChange={set("emis")} symbol={country.symbol} />
         </div>
       </section>
@@ -405,7 +411,7 @@ export default function ThisMonthPage() {
           <div><span>Reached your bank</span><b>{money(n(form.takeHome))}</b></div>
           {summary.fromSalary > 0 && <div><span>Saved from salary</span><b>{money(summary.fromSalary)}</b></div>}
           <div><span>Spent</span><b>{money(spent)}</b></div>
-          <div><span>Invested</span><b>{money(n(form.invested))}</b></div>
+          <div><span>Invested</span><b>{money(n(form.invested) + n(form.extraInvested))}</b>{n(form.extraInvested) > 0 && <small>incl. {money(n(form.extraInvested))} bonus</small>}</div>
           <div><span>EMIs</span><b>{money(n(form.emis))}</b></div>
           <div className="left"><span>Left in bank</span><b>{money(summary.leftInBank)}</b></div>
         </div>

@@ -1,4 +1,5 @@
 import { getFireScore, lifestyleExpenses, totalIncome, type FinancialProfile } from "./fireScore.ts";
+import { investingPerMonth } from "./extraInvesting.ts";
 
 /**
  * The Freedom Path: an ordered set of levels that turns the FIRE journey into a game.
@@ -92,7 +93,7 @@ export function getFreedomPath(profile: FinancialProfile, options: PathOptions =
   const coastNumber = coastFireNumber(score.fireTarget, yearsLeft, realRate);
   const fatTarget = score.fireTarget * FAT_FIRE_MULTIPLE;
   // Same basis as the savings rate: bank investing + salary EPF/NPS, out of everything earned.
-  const investRate = income > 0 ? (profile.monthly_investment + (profile.monthly_salary_savings ?? 0)) / income : 0;
+  const investRate = income > 0 ? (investingPerMonth(profile) + (profile.monthly_salary_savings ?? 0)) / income : 0;
   const highInterest = profile.highInterestDebt ?? 0;
   const uae = profile.currency === "AED";
   const protectedNow = profile.has_health_insurance && (profile.health_cover_amount ?? 0) > 0 && (!profile.has_dependents || (profile.has_term_insurance && (profile.term_cover_amount ?? 0) > 0));
@@ -259,10 +260,11 @@ export function getFreedomMetrics(profile: FinancialProfile, options: PathOption
   const accessible = Math.max(0, profile.investableAssets ?? profile.fire_accessible_assets ?? profile.assets);
   const expenses = lifestyleExpenses(profile); // steady lifestyle spending, same basis as the FIRE number
   const realRate = (options.expectedReturn ?? 10) - (options.inflation ?? 6);
-  const years = yearsToTarget(accessible, profile.monthly_investment, score.fireTarget, realRate);
+  const investing = investingPerMonth(profile); // monthly SIPs + invested bonuses spread over the year
+  const years = yearsToTarget(accessible, investing, score.fireTarget, realRate);
   // Suggested boost: ~10% of income, rounded to a friendly figure, minimum 1,000.
   const boostAmount = Math.max(1000, Math.round((profile.monthly_income * 0.1) / 1000) * 1000);
-  const boosted = yearsToTarget(accessible, profile.monthly_investment + boostAmount, score.fireTarget, realRate);
+  const boosted = yearsToTarget(accessible, investing + boostAmount, score.fireTarget, realRate);
   return {
     fireTarget: score.fireTarget,
     fireProgress: score.fireProgress,

@@ -3,9 +3,10 @@ import type { FinancialProfile } from "./fireScore.ts";
 import { applyLinkedSavings, type Goal } from "./goals.ts";
 import { normalizeSnapshots, type Snapshot } from "./progress.ts";
 import { countryFromCurrency, formatCountryMoney, getCountry, readStoredCountry, storeCountry } from "./country.ts";
+import { yearlyExtraInvestment } from "./extraInvesting.ts";
 
 export type AccountRow = { id: string; name: string; kind: "asset" | "liability"; category: string; investment_type: string | null; current_value: number; monthly_payment: number; is_high_interest: boolean; fire_treatment: string; property_use?: "self_occupied" | "rented" | "investment" | null; goal_id?: string | null; updated_at?: string | null };
-export type CheckinRow = { month_start: string; income: number; investment_income: number; expenses: number; invested: number; debt_paid: number; salary_savings: number; salary_pf: number; salary_pension: number; auto_filled: boolean };
+export type CheckinRow = { month_start: string; income: number; investment_income: number; expenses: number; invested: number; debt_paid: number; salary_savings: number; salary_pf: number; salary_pension: number; auto_filled: boolean; extra_invested: number };
 export type PlanRow = { retirement_age: number; inflation_rate: number; expected_return: number; withdrawal_rate: number; retirement_expenses?: number | null; step_up_percent?: number; step_up_month?: number | null; step_up_done_year?: number | null };
 export type LessonRow = { lesson_id: string; answered_correctly: boolean; completed_at: string };
 
@@ -59,7 +60,7 @@ export async function loadFinancialState(supabase: SupabaseClient, userId: strin
 
   // select("*") keeps the Journey working whether or not the property_use migration has been applied yet.
   const accounts: AccountRow[] = (accountsResult.data ?? []).map(row => ({ id: row.id, name: row.name, kind: row.kind, category: row.category, investment_type: row.investment_type ?? null, current_value: Number(row.current_value), monthly_payment: Number(row.monthly_payment), is_high_interest: Boolean(row.is_high_interest), fire_treatment: row.fire_treatment, property_use: row.property_use ?? null, goal_id: row.goal_id ?? null, updated_at: row.updated_at ?? null }));
-  const checkins: CheckinRow[] = (checkinResult.data ?? []).map(row => ({ month_start: row.month_start, income: Number(row.income), investment_income: Number(row.investment_income ?? 0), expenses: Number(row.expenses), invested: Number(row.invested), debt_paid: Number(row.debt_paid), salary_savings: Number(row.salary_pf ?? 0) + Number(row.salary_pension ?? 0), salary_pf: Number(row.salary_pf ?? 0), salary_pension: Number(row.salary_pension ?? 0), auto_filled: Boolean(row.auto_filled) }));
+  const checkins: CheckinRow[] = (checkinResult.data ?? []).map(row => ({ month_start: row.month_start, income: Number(row.income), investment_income: Number(row.investment_income ?? 0), expenses: Number(row.expenses), invested: Number(row.invested), debt_paid: Number(row.debt_paid), salary_savings: Number(row.salary_pf ?? 0) + Number(row.salary_pension ?? 0), salary_pf: Number(row.salary_pf ?? 0), salary_pension: Number(row.salary_pension ?? 0), auto_filled: Boolean(row.auto_filled), extra_invested: Number(row.extra_invested ?? 0) }));
   // The saved profile currency decides the country (₹ India / AED UAE) across the whole app.
   const country = getCountry(countryFromCurrency(profileResult.data?.currency));
   if (profileResult.data?.currency && typeof window !== "undefined" && readStoredCountry() !== country.code) storeCountry(country.code);
@@ -90,6 +91,7 @@ export async function loadFinancialState(supabase: SupabaseClient, userId: strin
       detailedDebtData: debts.length > 0,
       emergency_fund: Number(data.emergency_fund),
       monthly_investment: Number(data.monthly_investment),
+      yearly_extra_investment: yearlyExtraInvestment(data.yearly_extra_investment, checkins).yearly,
       has_health_insurance: data.has_health_insurance,
       has_term_insurance: data.has_term_insurance,
       has_dependents: data.has_dependents,
