@@ -811,3 +811,5 @@ button.tm-limit{border:0;padding:0;cursor:pointer;text-align:left;width:100%;fon
 .tax-ltcg .tax-grid{margin-top:12px}.tax-disclaimer{font-size:12px;line-height:1.6;color:#8896a3;margin:4px 4px 0}
 @media (max-width:860px){.tax-layout{grid-template-columns:1fr}}
 @media (max-width:520px){.tax-grid{grid-template-columns:1fr}.tax-bar-row{grid-template-columns:90px 1fr 84px}}
+.update-existing{margin:14px 0;padding:14px 16px;border-radius:14px;background:#eef6ff;border:1px solid #cfe3fb}.update-existing p{margin:4px 0 10px;font-size:13px;color:#41505c}.update-existing small{display:block;margin-top:10px;font-size:12px;color:#5b6770}.update-existing-list{display:flex;flex-wrap:wrap;gap:8px}
+.dup-warning{max-width:900px;margin:0 auto 18px;padding:16px 18px;border-radius:16px;background:#fff6ec;border:1px solid #f5c99a}.dup-warning>strong{color:#8a4a10}.dup-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f5dcc0}.dup-row p{margin:0;flex:1 1 320px;font-size:14px;line-height:1.55;color:#41505c}.dup-warning small{display:block;margin-top:8px;font-size:12px;color:#7a6650}

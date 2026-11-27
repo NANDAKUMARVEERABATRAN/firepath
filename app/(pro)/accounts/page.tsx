@@ -13,12 +13,12 @@ import { amountInWords } from "@/lib/format";
 import { goalCategories } from "@/lib/goals";
 import { useCountry } from "@/lib/useCountry";
 import { shortCountryMoney, type CountryCode } from "@/lib/country";
-import { bucketOf, getNetWorthBreakdown, propertyTreatment, type Bucket, propertyUseLabels, type FireTreatment, type PropertyUse } from "@/lib/netWorth";
+import { bucketOf, duplicateGroups, existingSameItem, getNetWorthBreakdown, sameTypeItems, propertyTreatment, type Bucket, propertyUseLabels, type FireTreatment, type PropertyUse } from "@/lib/netWorth";
 
 type Kind = "asset" | "liability";
 type Category = "cash" | "investment" | "property" | "vehicle" | "home_loan" | "vehicle_loan" | "education_loan" | "personal_loan" | "gold_loan" | "credit_card" | "other";
 type InvestmentType = "mutual_fund" | "stocks" | "bonds" | "fixed_deposit" | "nps_tier_1" | "nps_tier_2" | "provident_fund" | "ppf" | "gold" | "crypto" | "other" | "gratuity" | "workplace_savings" | "pension";
-type Account = { id: string; kind: Kind; category: Category; name: string; current_value: number; interest_rate: number | null; monthly_payment: number; is_high_interest: boolean; investment_type: InvestmentType | null; fire_treatment: FireTreatment; available_from_age: number | null; property_use: PropertyUse | null; goal_id?: string | null };
+type Account = { id: string; created_at?: string | null; updated_at?: string | null; kind: Kind; category: Category; name: string; current_value: number; interest_rate: number | null; monthly_payment: number; is_high_interest: boolean; investment_type: InvestmentType | null; fire_treatment: FireTreatment; available_from_age: number | null; property_use: PropertyUse | null; goal_id?: string | null };
 type AccountForm = { kind: Kind; category: Category; name: string; current_value: string; interest_rate: string; monthly_payment: string; is_high_interest: boolean; investment_type: InvestmentType | ""; fire_treatment: FireTreatment; available_from_age: string; property_use: PropertyUse; goal_id: string };
 const blank: AccountForm = { kind: "asset", category: "cash", name: "", current_value: "", interest_rate: "", monthly_payment: "", is_high_interest: false, investment_type: "", fire_treatment: "available", available_from_age: "", property_use: "self_occupied", goal_id: "" };
 const categoryLabels: Record<Category, string> = { cash: "Cash & deposits", investment: "Investments", property: "Property", vehicle: "Vehicle", home_loan: "Home loan", vehicle_loan: "Vehicle loan", education_loan: "Education loan", personal_loan: "Personal loan", gold_loan: "Gold loan", credit_card: "Credit card", other: "Other" };
@@ -68,6 +68,8 @@ export default function AccountsPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [picked, setPicked] = useState(false);
+  const [matches, setMatches] = useState<Account[]>([]); // items of the type being added: offer to update them instead
+  const [lastValue, setLastValue] = useState<{ value: number; at: string | null } | null>(null);
   const [goals, setGoals] = useState<{ id: string; name: string; emoji: string; done: boolean }[]>([]);
   const { country, code } = useCountry();
   const goalName = (id?: string | null) => { const goal = goals.find(item => item.id === id); return goal ? `${goal.emoji} ${goal.name}` : null; };
@@ -115,7 +117,23 @@ export default function AccountsPage() {
     setEditingId(account.id);
     setValues({ kind: account.kind, category: account.category, name: account.name, current_value: String(account.current_value), interest_rate: account.interest_rate?.toString() ?? "", monthly_payment: String(account.monthly_payment), is_high_interest: account.is_high_interest, investment_type: account.investment_type ?? "", fire_treatment: account.fire_treatment, available_from_age: account.available_from_age?.toString() ?? "", property_use: account.property_use ?? "self_occupied", goal_id: account.goal_id ?? "" });
     setPicked(true);
+    setMatches([]); setLastValue(null);
     document.getElementById("add-record")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  /** Update a saved item with today's value (instead of adding it again). */
+  function updateExisting(account: Account) {
+    startEdit(account);
+    setValues(current => ({ ...current, current_value: "" }));
+    setLastValue({ value: account.current_value, at: account.updated_at ?? account.created_at ?? null });
+  }
+  async function keepNewest(group: Account[]) {
+    const supabase = createClient();
+    if (!supabase) return;
+    const old = group.slice(1).map(a => a.id);
+    const { error } = await supabase.from("financial_accounts").delete().in("id", old);
+    if (error) { setMessage(error.message); return; }
+    setMessage(`✅ Kept ${group[0].name} at ${money(group[0].current_value)} and removed ${old.length} older cop${old.length === 1 ? "y" : "ies"}.`);
+    await load();
   }
 
   function applyVoiceEntry(transcript: string) {
@@ -175,10 +193,14 @@ export default function AccountsPage() {
       const wasLinked = Boolean(editingId && accounts.find(account => account.id === editingId)?.goal_id);
       const goalPatch: { goal_id?: string | null } = goalId || wasLinked ? { goal_id: goalId } : {};
       const payload = { user_id: session.user.id, kind: values.kind, category: values.category, name: values.name.trim(), current_value: Number(values.current_value), interest_rate: values.interest_rate ? Number(values.interest_rate) : null, monthly_payment: values.kind === "liability" ? Number(values.monthly_payment || 0) : 0, is_high_interest: values.kind === "liability" && values.is_high_interest, investment_type: values.kind === "asset" && values.category === "investment" && values.investment_type ? values.investment_type : null, fire_treatment: treatment, available_from_age: values.kind === "asset" && treatment === "later" && values.available_from_age ? Number(values.available_from_age) : null, property_use: isProperty ? values.property_use : null, ...goalPatch, updated_at: new Date().toISOString() };
-      const request = editingId ? supabase.from("financial_accounts").update(payload).eq("id", editingId) : supabase.from("financial_accounts").insert(payload);
+      // Same type and same name as a saved item = a new value for it, not a second holding.
+      const same = editingId ? null : existingSameItem(accounts, { kind: payload.kind, category: payload.category, investment_type: payload.investment_type, property_use: payload.property_use, name: payload.name });
+      const targetId = editingId ?? same?.id ?? null;
+      const request = targetId ? supabase.from("financial_accounts").update(payload).eq("id", targetId) : supabase.from("financial_accounts").insert(payload);
       const { error } = await request;
       if (error) throw error;
-      setValues(blank); setEditingId(null); setPicked(false); setMessage(`✅ Saved. Add another, or check “Where your net worth sits” above.`); await load();
+      setValues(blank); setEditingId(null); setPicked(false); setMatches([]); setLastValue(null);
+      setMessage(same ? `✅ Updated your existing “${same.name}” from ${money(same.current_value)} to ${money(payload.current_value)}. It isn’t counted twice.` : `✅ Saved. Add another, or check “Where your net worth sits” above.`); await load();
     } catch (error) { setMessage(error instanceof Error ? error.message : "Could not save this record."); }
     finally { setSaving(false); }
   }
@@ -195,14 +217,25 @@ export default function AccountsPage() {
     setValues({ ...blank, kind: preset.kind, category: preset.category, name: preset.label, investment_type: preset.investment_type ?? "", property_use: preset.property_use ?? "self_occupied", fire_treatment: preset.fire, available_from_age: preset.age ?? "", is_high_interest: Boolean(preset.highInterest) });
     setPicked(true);
     setMessage("");
+    setLastValue(null);
+    setMatches(sameTypeItems(accounts, { kind: preset.kind, category: preset.category, investment_type: preset.investment_type ?? null, property_use: preset.category === "property" ? preset.property_use ?? "self_occupied" : null }));
   }
-  function resetForm() { setValues(blank); setEditingId(null); setPicked(false); }
+  function resetForm() { setValues(blank); setEditingId(null); setPicked(false); setMatches([]); setLastValue(null); }
+  const dupes = duplicateGroups(accounts);
   const activePreset = picked ? findPreset(values) : undefined;
 
   return <><Header /><main className="accounts-page container">
     <div className="profile-heading"><p className="eyebrow"><Landmark size={14} /> YOUR BALANCE SHEET</p><h1>Assets and loans.</h1><p>Track each item to make your net worth and debt score more useful. Enter amounts in {currency}.</p></div>
     {!loading && !signedIn ? <section className="profile-card"><p>Sign in to manage your financial records.</p><Link href="/" className="button button-primary">Return home to sign in</Link></section> : loading ? <p className="profile-status">Loading financial records…</p> : <>
       <section className="account-totals portfolio-totals"><div><span>💼 Overall portfolio</span><small>Everything you own</small><strong>{money(effectiveAssets)}</strong></div><div className="fire-total"><span>🔥 FIRE portfolio</span><small>Counts toward financial freedom</small><strong>{money(effectiveFire)}</strong></div><div><span>🎯 Set aside for goals</span><small>House, kids, trips — not FIRE</small><strong>{money(breakdown.goalMoney)}</strong></div><div><span>Net worth</span><small>Everything you own minus loans</small><strong>{money(effectiveAssets - effectiveLiabilities)}</strong></div></section>
+      {dupes.length > 0 && <section className="dup-warning" role="alert">
+        <strong>⚠️ Some items are counted more than once</strong>
+        {dupes.map(g => <div key={g[0].id} className="dup-row">
+          <p>“{g[0].name}” is saved {g.length} times ({g.map(a => money(a.current_value)).join(" + ")} = <b>{money(g.reduce((s, a) => s + a.current_value, 0))}</b>). If the newest value, {money(g[0].current_value)}, is the current one, keep just that.</p>
+          <button type="button" className="button button-primary" onClick={() => void keepNewest(g)}>Keep only {money(g[0].current_value)}</button>
+        </div>)}
+        <small>Different funds or accounts? Give each its own name with ✏️ and this warning goes away.</small>
+      </section>}
       <ImportHoldings existing={accounts as unknown as { id: string; name: string; current_value: number; external_id?: string | null; source?: string | null }[]} country={code} onImported={() => void load()} />
       {accounts.length > 0 && (() => {
         // Each group lists its own items, so it's always clear where something was counted.
@@ -232,9 +265,15 @@ export default function AccountsPage() {
         </> : <>
           <div className="add-picked"><span className="add-picked-emoji">{activePreset?.emoji ?? "📝"}</span><div><p className="eyebrow">{editingId ? "EDITING" : "ADDING"}</p><h2>{activePreset?.label ?? (values.kind === "asset" ? "Asset" : "Loan")}</h2></div><button type="button" className="text-link" onClick={resetForm}>{editingId ? "Cancel" : "Change"}</button></div>
           <span className={`fire-badge ${values.kind === "liability" ? "loan" : values.goal_id && values.fire_treatment === "available" ? "goal" : values.fire_treatment}`}>{values.kind === "liability" ? "🧾 Reduces your net worth" : values.fire_treatment === "available" && values.goal_id ? `🎯 Set aside for ${goalName(values.goal_id) ?? "a goal"}` : values.fire_treatment === "available" ? "✅ Counts toward your FIRE number" : values.fire_treatment === "later" ? "🔒 Retirement money — counts from the age you can access it" : "🏠 Adds to net worth, not to FIRE"}</span>
+          {!editingId && matches.length > 0 && <div className="update-existing">
+            <strong>🔄 Value changed? Update what you already have</strong>
+            <p>Adding it again would count it twice. Tap the one to update:</p>
+            <div className="update-existing-list">{matches.map(m => <button key={m.id} type="button" className="qn-choice" onClick={() => updateExisting(m)}>{m.name} · {money(m.current_value)}</button>)}</div>
+            <small>Or fill in below to add a <b>different</b> holding (e.g. another fund), with its own name.</small>
+          </div>}
           <div className="account-form-grid">
             <label className="profile-field"><span>Name it (so you recognise it)</span><input value={values.name} onChange={event => setValues(current => ({ ...current, name: event.target.value }))} required maxLength={80} /></label>
-            <label className="profile-field"><span>{values.kind === "asset" ? "What’s it worth today?" : "How much is still owed?"} ({country.symbol})</span><input type="number" inputMode="numeric" min="0" step="any" value={values.current_value} autoFocus onChange={event => setValues(current => ({ ...current, current_value: event.target.value }))} required />{Number(values.current_value) > 0 && <small className="qn-words">= {amountInWords(Number(values.current_value), country.code)} {country.code === "IN" ? "rupees" : "dirhams"}</small>}</label>
+            <label className="profile-field"><span>{values.kind === "asset" ? "What’s it worth today?" : "How much is still owed?"} ({country.symbol})</span><input type="number" inputMode="numeric" min="0" step="any" value={values.current_value} autoFocus onChange={event => setValues(current => ({ ...current, current_value: event.target.value }))} required />{lastValue && <small className="qn-words">Last saved: {money(lastValue.value)}{lastValue.at ? ` on ${new Date(lastValue.at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}` : ""}. Enter today’s value; it replaces the old one.</small>}{Number(values.current_value) > 0 && <small className="qn-words">= {amountInWords(Number(values.current_value), country.code)} {country.code === "IN" ? "rupees" : "dirhams"}</small>}</label>
             {values.kind === "asset" && values.fire_treatment === "available" && <label className="profile-field money-for"><span>What is this money for?</span>
               <select value={values.goal_id} onChange={event => setValues(current => ({ ...current, goal_id: event.target.value }))}>
                 <option value="">🔥 My financial freedom (FIRE)</option>
