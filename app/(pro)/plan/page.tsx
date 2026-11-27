@@ -6,8 +6,9 @@ import { Target } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
-import { countryFromCurrency, formatCountryMoney } from "@/lib/country";
+import { countryFromCurrency, formatCountryMoney, shortCountryMoney } from "@/lib/country";
 import { inFutureMoney, inTodayMoney } from "@/lib/inflation";
+import { simulateDrawdown, sustainableWithdrawalRate } from "@/lib/retirementDrawdown";
 import { projectBreakdown, projectRetirementAssets, sumLaterAssets, type LaterAssetLot } from "@/lib/retirementProjection";
 
 type Currency = "INR" | "AED" | "USD";
@@ -28,6 +29,7 @@ export default function PlanPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [afterReturn, setAfterReturn] = useState(9); // yearly return after stopping work (set from the plan on load)
   const [planColumns, setPlanColumns] = useState(false); // retirement_expenses column exists (migration 0028)
 
   useEffect(() => {
@@ -78,6 +80,8 @@ export default function PlanPage() {
             expectedReturn: Number(planResult.data?.expected_return ?? current.expectedReturn),
             withdrawal: Number(planResult.data?.withdrawal_rate ?? current.withdrawal),
           }));
+          // After stopping work, portfolios usually hold more safe assets: start one point below the working-years return.
+          setAfterReturn(Math.max(4, Math.round((Number(planResult.data?.expected_return ?? 10) - 1) * 2) / 2));
         }
         if (planResult.error) setMessage(`Could not load saved FIRE assumptions. Run the FIRE plans migration in Supabase. Details: ${planResult.error.message}`);
       } catch (error) { if (active) setMessage(error instanceof Error ? error.message : "Could not load your plan."); }
@@ -161,6 +165,52 @@ export default function PlanPage() {
         </section>
         <section className="plan-results"><p className="result-kicker">ILLUSTRATIVE FIRE NUMBER</p><strong className="plan-target">{money(result.target)}</strong><p className="plan-today">= <b>{money(result.targetToday)}</b> in today’s money · {fireLifestyle(inputs.retirementExpenses === null || inputs.monthlyExpenses <= 0 ? 1 : inputs.retirementExpenses / inputs.monthlyExpenses)}</p><p>Money needed at age {inputs.retirementAge} to cover your expenses forever at a {inputs.withdrawal}% yearly withdrawal.</p>{inputs.withdrawal > 5 && <p className="plan-warn">⚠️ A {inputs.withdrawal}% withdrawal rate makes the target look small but risks running out of money. Most FIRE plans use 3–4% (India often 3–3.5% because of higher inflation). At 3.5% your target would be {money(result.expenseAtRetirement * 12 / 0.035)}.</p>}<div className="plan-result-line"><span>Expenses per month then</span><b>{money(result.expenseAtRetirement)}</b></div><p className="plan-math">{money(result.baseExpenses)}{inputs.retirementExpenses !== null ? " planned spending" : " today"} grows with {inputs.inflation}% inflation for {result.years} year{result.years === 1 ? "" : "s"} → {money(result.expenseAtRetirement)}/month. Target = {money(result.expenseAtRetirement)} × 12 ÷ {inputs.withdrawal}% = {money(result.target)}.</p><div className="plan-result-line"><span>Projected wealth at target age</span><b>{money(result.projected)}</b></div><ul className="plan-breakdown"><li><span>Today’s {money(inputs.assets)} growing at {result.projectedAnnualGrowth.toFixed(1)}%</span><b>{money(result.parts.grown)}</b></li><li><span>Investing {money(inputs.monthlyInvestment)}/month ({money(result.parts.contributed)} put in)</span><b>{money(result.parts.contributions)}</b></li>{result.parts.unlocked > 0 && <li><span>Later-access funds (EPF/PPF/NPS…) unlocked by age {inputs.retirementAge}</span><b>{money(result.parts.unlocked)}</b></li>}</ul><div className="plan-result-line"><span>Estimated target age</span><b>{result.crossingAge ? `Around age ${result.crossingAge}` : "Not reached in this scenario"}</b></div><div className={`plan-gap ${result.gap >= 0 ? "positive" : "negative"}`}><span>{result.gap >= 0 ? "Illustrative surplus" : "Illustrative gap"}</span><strong>{money(Math.abs(result.gap))}</strong></div><div className="plan-chart-wrap"><div className="plan-chart-heading"><b>Illustrative path</b><span>wealth vs FIRE number</span></div><svg className="plan-chart" viewBox="0 0 640 205" role="img" aria-labelledby="plan-chart-title plan-chart-description"><title id="plan-chart-title">Projected wealth compared with FIRE number</title><desc id="plan-chart-description">A projection based on your current investments, monthly contributions, return and inflation assumptions.</desc><line x1="30" y1="178" x2="610" y2="178" className="plan-chart-axis"/><polyline points={result.targetPoints} className="plan-chart-target"/><polyline points={result.wealthPoints} className="plan-chart-wealth"/><text x="30" y="198" className="plan-chart-label">{inputs.age}</text><text x="610" y="198" textAnchor="end" className="plan-chart-label">{inputs.retirementAge}</text></svg><div className="plan-chart-legend"><span><i className="wealth-key" />Projected wealth</span><span><i className="target-key" />FIRE number</span></div></div><p className="plan-result-note">This is a simplified scenario tool, not a promise or a recommendation. Change one assumption at a time to see how the estimate moves.</p></section>
       </form>
+      {result.target > 0 && (() => {
+        // Life after FIRE: withdrawals rise with inflation every year; does the money last to 100?
+        const sim = simulateDrawdown({ retireAge: inputs.retirementAge, corpus: result.target, firstYearExpenses: result.expenseAtRetirement * 12, inflationPercent: inputs.inflation, returnPercent: afterReturn, yearsFromToday: result.years });
+        const safeRate = sim.runsOutAt !== null ? sustainableWithdrawalRate({ retireAge: inputs.retirementAge, inflationPercent: inputs.inflation, returnPercent: afterReturn }) : null;
+        const pts = sim.years.map(y => ({ age: y.age + 1, value: y.endBalanceToday }));
+        const startToday = result.target / Math.pow(1 + inputs.inflation / 100, result.years);
+        const series = [{ age: inputs.retirementAge, value: startToday }, ...pts];
+        const W2 = 640, H2 = 220, L = 62, R = 14, T = 14, B = 28;
+        const maxV = Math.max(1, ...series.map(p => p.value));
+        const x = (age: number) => L + ((age - inputs.retirementAge) / Math.max(1, 100 - inputs.retirementAge)) * (W2 - L - R);
+        const y = (v: number) => T + (H2 - T - B) - (Math.max(0, v) / maxV) * (H2 - T - B);
+        const path = series.map((p, k) => `${k ? "L" : "M"}${x(p.age).toFixed(1)},${y(p.value).toFixed(1)}`).join(" ");
+        const marks = [0, 10, 20, 30].map(n => sim.years[n]).filter(Boolean);
+        const last = series.at(-1)!;
+        return <section className="profile-card after-fire">
+          <p className="eyebrow">AFTER YOU’RE FREE</p>
+          <h2>Does the money last, with prices rising every year?</h2>
+          <p className="after-intro">Your FIRE number assumes you <b>raise your withdrawals with inflation every year</b> after you stop working, while the rest of your money keeps growing. Here’s how that plays out from age {inputs.retirementAge}, starting with your FIRE number of {money(result.target)}.</p>
+          <label className="range-field after-return"><span className="range-label">Yearly return after you stop working<b>{afterReturn}%</b></span><input type="range" min={4} max={14} step={0.5} value={afterReturn} onChange={e => setAfterReturn(Number(e.target.value))} /><small>Usually a little lower than while you’re working, because more is kept in safer investments. Inflation stays {inputs.inflation}%.</small></label>
+          <div className="after-steps">{marks.map(m => <div key={m.age}><span>Age {m.age}</span><strong>{money(m.monthlyWithdrawal)}/month</strong><small>{m.age === inputs.retirementAge ? "first year" : `+${inputs.inflation}% a year`}</small></div>)}</div>
+          <p className={`after-verdict ${sim.runsOutAt === null ? "ok" : "short"}`}>{sim.runsOutAt === null
+            ? <>✅ <b>Lasts beyond age 100.</b> About {money(last.value)} left at 100, in today’s money.</>
+            : <>⚠️ <b>Runs out around age {sim.runsOutAt}.</b> To last to 100 at a {afterReturn}% return, use a withdrawal rate of about <b>{safeRate}%</b> (FIRE number {money(result.expenseAtRetirement * 12 / ((safeRate || 1) / 100))}), plan to spend a little less, or keep some income for a few years.</>}</p>
+          <div className="after-chart">
+            <svg viewBox={`0 0 ${W2} ${H2}`} role="img" aria-label="Money left each year after you stop working, in today's money">
+              {[0, 0.5, 1].map(t => <g key={t}><line x1={L} x2={W2 - R} y1={y(maxV * t)} y2={y(maxV * t)} className="plan-chart-axis" opacity={t ? 0.35 : 1} /><text x={L - 8} y={y(maxV * t) + 4} textAnchor="end" className="plan-chart-label">{shortCountryMoney(maxV * t, countryFromCurrency(currency))}</text></g>)}
+              <path d={path} className="plan-chart-wealth" fill="none" />
+              <text x={x(last.age)} y={y(last.value) - 8} textAnchor="end" className="after-direct">{shortCountryMoney(last.value, countryFromCurrency(currency))}</text>
+              {[inputs.retirementAge, ...[50, 60, 70, 80, 90, 100].filter(a => a > inputs.retirementAge + 4)].map(a => <text key={a} x={x(a)} y={H2 - 8} textAnchor="middle" className="plan-chart-label">{a}</text>)}
+            </svg>
+            <small>Money left at each age, in today’s money. {sim.runsOutAt === null ? "It falls slowly because withdrawals rise with prices; that’s expected, and it never reaches zero." : `It reaches zero around age ${sim.runsOutAt}: withdrawals rising with prices outpace growth.`}</small>
+          </div>
+          <h3>A simple way to hold the money (the bucket plan)</h3>
+          <div className="after-buckets">
+            <div><span>1</span><strong>Safety bucket</strong><p>About <b>2 years</b> of spending (about {money(Math.round(result.expenseAtRetirement * 24 / 10000) * 10000)}) in a savings account or liquid fund. You live from this, so a market fall never forces you to sell.</p></div>
+            <div><span>2</span><strong>Stability bucket</strong><p>The next <b>~5 years</b> of spending in steadier options: FDs, debt or hybrid funds, Senior Citizen schemes later. Refills bucket 1 every year.</p></div>
+            <div><span>3</span><strong>Growth bucket</strong><p>The rest in diversified equity, such as broad index funds, so your money keeps growing faster than prices. Move gains to bucket 2 after good years.</p></div>
+          </div>
+          <ul className="after-rules">
+            <li>Raise your withdrawal once a year by inflation, not more.</li>
+            <li>In a year when markets fall a lot, skip the raise or trim spending a little. Small cuts in bad years make the money last much longer.</li>
+            <li>Review once a year: spending, health cover, and whether your withdrawal rate is still near your plan.</li>
+          </ul>
+          <p className="profile-privacy">Illustrative only: steady returns are assumed, but real markets go up and down, and tax isn’t modelled. This is education, not investment advice. Consider a SEBI-registered adviser for your actual plan.</p>
+        </section>;
+      })()}
     </>}
   </main><Footer /></>;
 }
