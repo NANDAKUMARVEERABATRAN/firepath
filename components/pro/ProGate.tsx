@@ -72,8 +72,9 @@ export default function ProGate({ children }: { children: ReactNode }) {
 
   // Free plan: Pro-only pages show what Pro adds; everything else works.
   if (isProOnlyPage(pathname)) return <><Header /><main className="container pro-page">{celebration}<Paywall status={status} signedIn onStarted={() => { setWelcome("trial"); void check(); }} feature={pathname} /></main><Footer /></>;
+  const pausedUntil = status.state === "paused" && status.pausedUntil ? status.pausedUntil.toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "";
   return <ProContext.Provider value={{ pro: false }}>
-    <a className="pro-bar free" href="/pricing">You’re on the free plan. Pro adds money trends, the FIRE plan, Save more, monthly reports, AI logging and portfolio import →</a>
+    {pausedUntil ? <a className="pro-bar free" href="/account">⏸️ Pro is paused until {pausedUntil}. Free features keep working. Resume any time →</a> : <a className="pro-bar free" href="/pricing">You’re on the free plan. Pro adds money trends, the FIRE plan, Save more, the tax planner, monthly reports, AI logging and portfolio import →</a>}
     {celebration}
     {children}
   </ProContext.Provider>;

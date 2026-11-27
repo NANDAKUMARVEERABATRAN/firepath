@@ -18,7 +18,7 @@ export const proBenefits = [
 ];
 
 type Props = { status: ProStatus; onStarted?: () => void; signedIn: boolean; /** The Pro-only page someone tried to open on the free plan. */ feature?: string | null };
-const FEATURE_NAMES: Record<string, string> = { "/trends": "Money trends", "/save-more": "Save more & Leak Hunter", "/report": "The monthly report", "/plan": "Your FIRE plan" };
+const FEATURE_NAMES: Record<string, string> = { "/trends": "Money trends", "/save-more": "Save more & Leak Hunter", "/report": "The monthly report", "/plan": "Your FIRE plan", "/tax": "The tax planner" };
 const FOUNDING_KEY = "ff-founding";
 
 export default function Paywall({ status, onStarted, signedIn, feature }: Props) {

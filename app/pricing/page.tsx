@@ -19,6 +19,7 @@ const rows: [string, boolean, boolean][] = [
   ["FIRE plan: step-up, Lean/Fat FIRE, life after FIRE", false, true],
   ["Money trends: wealth, spending & budget charts", false, true],
   ["Save more: Leak Hunter & savings coach", false, true],
+  ["Tax planner: old vs new regime, deductions & LTCG harvesting", false, true],
   ["Monthly report with 3 focus actions", false, true],
 ];
 

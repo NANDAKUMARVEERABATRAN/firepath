@@ -9,12 +9,16 @@ export const PAYMENTS_LIVE = false;
 /** Marker set just before Google sign-in from a "start trial" button, so the trial starts automatically after login. */
 export const START_TRIAL_KEY = "ff-start-trial";
 
-export type SubscriptionRow = { plan: "trial" | "monthly" | "yearly"; status: "active" | "cancelled" | "expired"; current_period_end: string; trial_started_at: string | null };
-export type ProStatus = { state: "none" | "trial" | "paid" | "expired"; daysLeft: number; endsAt: Date | null; trialUsed: boolean };
+export type SubscriptionRow = { plan: "trial" | "monthly" | "yearly"; status: "active" | "cancelled" | "expired" | "paused"; current_period_end: string; trial_started_at: string | null; paused_until?: string | null };
+export type ProStatus = { state: "none" | "trial" | "paid" | "expired" | "paused"; daysLeft: number; endsAt: Date | null; trialUsed: boolean; pausedUntil?: Date | null };
 
 /** Pure status logic (testable): active until current_period_end; a cancelled plan keeps access until then. */
 export function getProStatus(row: SubscriptionRow | null, now = new Date()): ProStatus {
   if (!row) return { state: "none", daysLeft: 0, endsAt: null, trialUsed: false };
+  // Paused: no Pro (and no charges) until the pause ends; after that date it simply counts as active again.
+  if (row.status === "paused" && row.paused_until && new Date(row.paused_until).getTime() > now.getTime()) {
+    return { state: "paused", daysLeft: 0, endsAt: new Date(row.current_period_end), trialUsed: true, pausedUntil: new Date(row.paused_until) };
+  }
   const endsAt = new Date(row.current_period_end);
   const msLeft = endsAt.getTime() - now.getTime();
   const daysLeft = Math.max(0, Math.ceil(msLeft / 86_400_000));
@@ -42,6 +46,8 @@ export const REFERRAL_REWARD = { signup: 100, paid: 990 } as const;
  * Free tier: everything after sign-in is free EXCEPT these pages and a few Pro features
  * (AI one-line logging, CAS/app import, more than one goal).
  */
-export const PRO_ONLY_PAGES = ["/trends", "/save-more", "/report", "/plan"] as const;
+export const PRO_ONLY_PAGES = ["/trends", "/save-more", "/report", "/plan", "/tax"] as const;
 export const FREE_GOAL_LIMIT = 1;
 export const isProOnlyPage = (path: string | null | undefined) => (PRO_ONLY_PAGES as readonly string[]).includes(path ?? "");
+
+export const PAUSE_MONTHS = [1, 2, 3] as const;

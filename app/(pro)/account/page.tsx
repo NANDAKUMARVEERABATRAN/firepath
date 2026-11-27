@@ -2,20 +2,20 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Crown, Heart } from "lucide-react";
+import { ArrowLeft, Crown, Heart, PauseCircle } from "lucide-react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import DeleteAccount from "@/components/account/DeleteAccount";
 import { createClient } from "@/lib/supabase/client";
 import { loadFinancialState, type FinancialState } from "@/lib/financialState";
 import { getGameSummary } from "@/lib/gameSummary";
-import { getProStatus, PRICING, type ProStatus, type SubscriptionRow } from "@/lib/subscription";
+import { getProStatus, PAUSE_MONTHS, PRICING, type ProStatus, type SubscriptionRow } from "@/lib/subscription";
 import { countryFromCurrency, formatCountryMoney, getCountry, priceText, yearlySavingPercent } from "@/lib/country";
 import { lessons as allLessons } from "@/lib/wisdom";
 import { PATH_LEVELS } from "@/lib/freedomPath";
 
 type Row = SubscriptionRow & { cancel_reason?: string | null };
-type Step = "overview" | "proud" | "why" | "offer" | "done";
+type Step = "overview" | "proud" | "why" | "offer" | "done" | "paused";
 
 const reasons = [
   { id: "price", label: "💸 It’s too expensive" },
@@ -48,7 +48,13 @@ export default function AccountPage() {
           supabase.from("subscriptions").select("*").eq("user_id", session.user.id).maybeSingle(),
         ]);
         setState(loaded);
-        setRow((sub.data as Row | null) ?? null);
+        let subRow = (sub.data as Row | null) ?? null;
+        // A pause that has run out: mark the plan active again so it can be paused or cancelled normally.
+        if (subRow?.status === "paused" && subRow.paused_until && new Date(subRow.paused_until).getTime() <= Date.now()) {
+          const { data } = await supabase.rpc("unpause_subscription");
+          if (data) subRow = data as Row;
+        }
+        setRow(subRow);
       } catch (error) { setMessage(error instanceof Error ? error.message : "Could not load your account."); }
       finally { setLoading(false); }
     })();
@@ -61,19 +67,27 @@ export default function AccountPage() {
   const money = (value: number) => formatCountryMoney(value, code);
   const ends = status.endsAt ? status.endsAt.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" }) : "";
   const cancelled = row?.status === "cancelled";
+  const paused = status.state === "paused";
+  const pausedUntil = status.pausedUntil ? status.pausedUntil.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" }) : "";
+  const canPause = !!row && (row.plan === "monthly" || row.plan === "yearly") && row.status === "active";
   const planName = row?.plan === "trial" ? `Free ${PRICING.trialDays}-day trial` : row?.plan === "yearly" ? "Pro · yearly" : row?.plan === "monthly" ? "Pro · monthly" : "No plan";
 
-  async function callRpc(name: "cancel_subscription" | "resume_subscription") {
+  async function callRpc(name: "cancel_subscription" | "resume_subscription" | "pause_subscription" | "unpause_subscription", months = 1) {
     const supabase = createClient();
     if (!supabase) return;
     setBusy(true); setMessage("");
     const fullReason = [reasons.find(r => r.id === reason)?.label.replace(/^\S+\s/, ""), note.trim()].filter(Boolean).join(" — ");
-    const { data, error } = name === "cancel_subscription" ? await supabase.rpc(name, { reason: fullReason }) : await supabase.rpc(name);
+    const { data, error } = name === "cancel_subscription" ? await supabase.rpc(name, { reason: fullReason })
+      : name === "pause_subscription" ? await supabase.rpc(name, { months })
+      : await supabase.rpc(name);
     setBusy(false);
-    if (error) { setMessage(error.message.includes("function") ? "Run supabase/migrations/202611260020_progress_and_cancel.sql in Supabase first." : error.message); return; }
+    if (error) {
+      const migration = name.includes("pause") ? "202611270034_pause_subscription.sql" : "202611260020_progress_and_cancel.sql";
+      setMessage(error.message.includes("function") ? `Run supabase/migrations/${migration} in Supabase first.` : error.message); return;
+    }
     setRow(data as Row);
-    setStep(name === "cancel_subscription" ? "done" : "overview");
-    if (name === "resume_subscription") setMessage("🎉 Welcome back! Your plan continues as before.");
+    setStep(name === "cancel_subscription" ? "done" : name === "pause_subscription" ? "paused" : "overview");
+    if (name === "resume_subscription" || name === "unpause_subscription") setMessage("🎉 Welcome back! Your plan continues as before.");
   }
 
   const offer = (() => {
@@ -94,11 +108,13 @@ export default function AccountPage() {
       {step === "overview" && <section className="account-card">
         <p className="eyebrow"><Crown size={14} /> YOUR SUBSCRIPTION</p>
         <h1>{planName}</h1>
-        {row ? <p className="account-sub">{cancelled ? `Cancelled — you keep full access until ${ends}. Your data stays safe.` : status.state === "expired" ? "Your plan has ended. Your data is safe." : `${status.daysLeft} day${status.daysLeft === 1 ? "" : "s"} left · renews or ends on ${ends}`}</p> : <p className="account-sub">You don’t have a plan yet.</p>}
+        {row ? <p className="account-sub">{paused ? `Paused until ${pausedUntil}. Nothing is charged, your data stays safe, and Pro comes back on its own. Your plan now runs until ${ends}.` : cancelled ? `Cancelled — you keep full access until ${ends}. Your data stays safe.` : status.state === "expired" ? "Your plan has ended. Your data is safe." : `${status.daysLeft} day${status.daysLeft === 1 ? "" : "s"} left · renews or ends on ${ends}`}</p> : <p className="account-sub">You don’t have a plan yet.</p>}
         <div className="account-actions">
+          {paused && <button type="button" className="button button-primary" onClick={() => void callRpc("unpause_subscription")} disabled={busy}><Heart size={16} /> Resume Pro now</button>}
           {cancelled && status.state !== "expired" && <button type="button" className="button button-primary" onClick={() => void callRpc("resume_subscription")} disabled={busy}><Heart size={16} /> Keep my plan</button>}
           {row?.plan !== "yearly" && <Link href="/pricing" className="button button-primary">Switch to yearly — save {yearlySavingPercent(code)}%</Link>}
-          {row && !cancelled && status.state !== "expired" && <button type="button" className="text-link account-cancel" onClick={() => setStep("proud")}>{row.plan === "trial" ? "Cancel trial" : "Cancel subscription"}</button>}
+          {canPause && <button type="button" className="button button-light" onClick={() => setStep("offer")}><PauseCircle size={16} /> Pause for a while</button>}
+          {row && !cancelled && !paused && status.state !== "expired" && <button type="button" className="text-link account-cancel" onClick={() => setStep("proud")}>{row.plan === "trial" ? "Cancel trial" : "Cancel subscription"}</button>}
         </div>
       </section>}
 
@@ -142,11 +158,22 @@ export default function AccountPage() {
         <button type="button" className="qn-back" onClick={() => setStep("why")}><ArrowLeft size={16} /> Back</button>
         <h1>{offer.title}</h1>
         <p className="account-sub">{offer.body}</p>
+        {canPause && <div className="pause-offer">
+          <strong><PauseCircle size={16} /> Need a break instead? Pause, don’t lose anything.</strong>
+          <p>Take 1–3 months off. Nothing is charged, your streak, goals and history stay saved, and Pro comes back on its own. The months you pause are added to the end of your plan.</p>
+          <div className="pause-choices">{PAUSE_MONTHS.map(m => <button key={m} type="button" className="qn-choice" disabled={busy} onClick={() => void callRpc("pause_subscription", m)}>Pause {m} month{m === 1 ? "" : "s"}</button>)}</div>
+        </div>}
         {reason === "feature" && <textarea className="qn-textarea cancel-note" rows={3} maxLength={400} placeholder="What would make FIREpath worth keeping?" value={note} onChange={event => setNote(event.target.value)} />}
         <div className="cancel-actions">
           {offer.cta ? <Link href={offer.href} className="button button-primary">{offer.cta}</Link> : <Link href="/journey" className="button button-primary">Stay and wait for it</Link>}
           <button type="button" className="text-link" onClick={() => void callRpc("cancel_subscription")} disabled={busy}>{busy ? "Cancelling…" : `No thanks, cancel my ${row?.plan === "trial" ? "trial" : "plan"}`}</button>
         </div>
+      </section>}
+
+      {step === "paused" && <section className="account-card cancel-flow">
+        <h1>Paused until {pausedUntil} ⏸️</h1>
+        <p className="account-sub">Nothing will be charged while you’re away. Your profile, goals, streak and history stay saved, and Pro switches back on by itself on <b>{pausedUntil}</b>. Your plan now runs until <b>{ends}</b>. The free features keep working meanwhile.</p>
+        <div className="cancel-actions"><button type="button" className="button button-primary" onClick={() => void callRpc("unpause_subscription")} disabled={busy}><Heart size={16} /> Changed my mind — resume now</button><Link href="/journey" className="text-link">Back to Home</Link></div>
       </section>}
 
       {step === "done" && <section className="account-card cancel-flow">

@@ -59,3 +59,13 @@ test("free tier: only a few pages need Pro; founding offer closes on its date", 
   assert.equal(foundingOpen(new Date("2027-02-01T10:00:00Z")), false);
   assert.ok(FOUNDING.yearly < 899);
 });
+
+import { getProStatus as status2, hasPro as hasPro2 } from "../lib/subscription.ts";
+test("paused plans have no Pro until the pause ends", () => {
+  const now = new Date("2027-03-01T00:00:00Z");
+  const paused = status2({ plan: "monthly", status: "paused", current_period_end: "2027-05-01T00:00:00Z", trial_started_at: null, paused_until: "2027-04-01T00:00:00Z" }, now);
+  assert.equal(paused.state, "paused");
+  assert.equal(hasPro2(paused), false);
+  const resumed = status2({ plan: "monthly", status: "paused", current_period_end: "2027-05-01T00:00:00Z", trial_started_at: null, paused_until: "2027-02-01T00:00:00Z" }, now);
+  assert.equal(resumed.state, "paid"); // pause over: active again
+});

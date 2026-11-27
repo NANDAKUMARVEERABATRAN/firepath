@@ -18,7 +18,7 @@ const HUBS = [
     { href: "/journey", label: "Overview" }, { href: "/dashboard", label: "FIRE score" }, { href: "/report", label: "Monthly report" }, { href: "/learn", label: "Learn" },
   ] },
   { id: "money", label: "Money", icon: PiggyBank, href: "/month", pages: [
-    { href: "/month", label: "This month" }, { href: "/trends", label: "Trends" }, { href: "/save-more", label: "Save more" },
+    { href: "/month", label: "This month" }, { href: "/trends", label: "Trends" }, { href: "/save-more", label: "Save more" }, { href: "/tax", label: "Tax planner" },
   ] },
   { id: "wealth", label: "Wealth", icon: Wallet, href: "/accounts", pages: [
     { href: "/accounts", label: "Portfolio" }, { href: "/goals", label: "Goals" }, { href: "/plan", label: "FIRE plan" },
