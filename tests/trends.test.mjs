@@ -76,3 +76,14 @@ test("wealth over time: monthly points, quarterly = latest balance in each quart
   assert.equal(g.perMonth, 325000); // over 4 months (Jan → May)
   assert.equal(growth(monthly.slice(0, 1), r => r.fire), null);
 });
+
+import { budgetMonths } from "../lib/trends.ts";
+test("budget over the months: spending vs carried-forward limits, EMIs/savings excluded", () => {
+  const entries = [
+    { month_start: "2026-09-01", category: "dining", amount: 5000 }, { month_start: "2026-09-01", category: "debt_repayment", amount: 15000 },
+    { month_start: "2026-10-01", category: "groceries", amount: 9000 }, { month_start: "2026-11-01", category: "housing", amount: 25000 },
+  ];
+  const limits = [{ month_start: "2026-10-01", category: "groceries", target_amount: 8000 }, { month_start: "2026-10-01", category: "housing", target_amount: 25000 }, { month_start: "2026-10-01", category: "savings", target_amount: 9999 }];
+  const rows = budgetMonths(entries, limits, ["2026-09-01", "2026-10-01", "2026-11-01"]);
+  assert.deepEqual(rows.map(r => [r.label, r.spent, r.limit]), [["Sep 26", 5000, 0], ["Oct 26", 9000, 33000], ["Nov 26", 25000, 33000]]);
+});

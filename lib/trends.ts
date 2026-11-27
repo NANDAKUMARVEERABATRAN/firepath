@@ -132,3 +132,23 @@ export function growth(rows: WealthRow[], pick: (r: WealthRow) => number): Growt
   const from = pick(first), to = pick(last), change = to - from;
   return { from, to, change, percent: from > 0 ? (change / from) * 100 : null, perMonth: change / monthsBetween(first.key, last.key) };
 }
+
+/* ---------------- Budget over the months ---------------- */
+
+const SPENDING_CATEGORIES = new Set(["housing", "groceries", "utilities", "transport", "dining", "personal", "healthcare", "insurance", "education", "family", "other"]);
+export type BudgetMonth = { key: string; label: string; spent: number; limit: number };
+
+/**
+ * Category spending per month vs the total of that month's limits. Limits carry forward: a month uses the
+ * most recent month (on or before it) that has limits saved. Investing/EMI entries aren't spending.
+ */
+export function budgetMonths(entries: { month_start: string; category: string; amount: number }[], limits: { month_start: string; category: string; target_amount: number }[], monthKeys: string[]): BudgetMonth[] {
+  const limitMonths = [...new Set(limits.map(l => l.month_start))].sort();
+  return monthKeys.map(m => {
+    const spent = entries.filter(e => e.month_start === m && SPENDING_CATEGORIES.has(e.category)).reduce((s, e) => s + Math.max(0, Number(e.amount) || 0), 0);
+    const from = [...limitMonths].reverse().find(lm => lm <= m);
+    const limit = from ? limits.filter(l => l.month_start === from && SPENDING_CATEGORIES.has(l.category)).reduce((s, l) => s + Math.max(0, Number(l.target_amount) || 0), 0) : 0;
+    const [y, mo] = m.split("-");
+    return { key: m.slice(0, 7), label: `${MONTHS[Number(mo) - 1]} ${y.slice(2)}`, spent, limit };
+  });
+}

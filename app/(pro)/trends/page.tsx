@@ -7,7 +7,7 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { createClient } from "@/lib/supabase/client";
 import { countryFromCurrency, formatCountryMoney, type CountryCode } from "@/lib/country";
-import { categoryTotals, growth, highlights, monthlyRows, niceMax, shortMoney, wealthRows, yearlyRows, type TrendCheckin, type TrendRow, type WealthSnapshot } from "@/lib/trends";
+import { budgetMonths, categoryTotals, growth, highlights, monthlyRows, niceMax, shortMoney, wealthRows, yearlyRows, type TrendCheckin, type TrendRow, type WealthSnapshot } from "@/lib/trends";
 import { normalizeSnapshots } from "@/lib/progress";
 
 type Range = "12" | "all" | "year";
@@ -42,6 +42,9 @@ export default function TrendsPage() {
   const [snaps, setSnaps] = useState<WealthSnapshot[]>([]);
   const [period, setPeriod] = useState<"month" | "quarter">("month");
   const [wHover, setWHover] = useState<number | null>(null);
+  const [budgets, setBudgets] = useState<{ month_start: string; category: string; target_amount: number }[]>([]);
+  const [trackBudget, setTrackBudget] = useState(true);
+  const [bHover, setBHover] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   // Charts are drawn at the real container width so text stays readable on phones.
@@ -65,12 +68,16 @@ export default function TrendsPage() {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.user) { setMessage("Sign in to see your money trends."); return; }
-        const [c, b, p, s] = await Promise.all([
+        const [c, b, p, s, lim] = await Promise.all([
           supabase.from("monthly_checkins").select("*").eq("user_id", session.user.id).order("month_start", { ascending: true }).limit(120),
           supabase.from("budget_transactions").select("month_start, category, amount").eq("user_id", session.user.id).gte("month_start", monthKey(-23)),
-          supabase.from("financial_profiles").select("currency").eq("user_id", session.user.id).maybeSingle(),
+          supabase.from("financial_profiles").select("*").eq("user_id", session.user.id).maybeSingle(),
           supabase.from("progress_snapshots").select("*").eq("user_id", session.user.id).order("month_start", { ascending: true }).limit(120),
+          supabase.from("monthly_budgets").select("month_start, category, target_amount").eq("user_id", session.user.id).order("month_start", { ascending: false }).limit(600),
         ]);
+        setBudgets(((lim.data ?? []) as { month_start: string; category: string; target_amount: number }[]).map(x => ({ ...x, target_amount: Number(x.target_amount) })));
+        // Budget charts show only for people who track by category (their saved choice, else whether they have entries).
+        setTrackBudget(p.data?.track_budget ?? (b.data ?? []).length > 0);
         if (!s.error) setSnaps(normalizeSnapshots(s.data).map(x => ({ month_start: x.month_start, net_worth: x.net_worth, fire_portfolio: x.fire_portfolio, fire_target: x.fire_target })));
         if (c.error) throw c.error;
         setCheckins((c.data ?? []).map(r => ({ month_start: r.month_start, income: Number(r.income), expenses: Number(r.expenses), invested: Number(r.invested), debt_paid: Number(r.debt_paid), salary_pf: Number(r.salary_pf ?? 0), salary_pension: Number(r.salary_pension ?? 0) })));
@@ -145,6 +152,40 @@ export default function TrendsPage() {
       </div>
       <details className="tr-table"><summary>Show as table</summary><div className="tr-table-wrap"><table><thead><tr><th>{period === "month" ? "Month" : "Quarter"}</th><th>Net worth</th><th>FIRE portfolio</th><th>FIRE number</th></tr></thead><tbody>{[...wRows].reverse().map(r => <tr key={r.key}><td>{r.label}</td><td>{money(r.netWorth)}</td><td>{money(r.fire)}</td><td>{money(r.target)}</td></tr>)}</tbody></table></div></details>
       <p className="tr-note">One snapshot a month, saved when you open Home.{period === "quarter" ? " Quarterly shows the latest balance in each quarter." : ""} Growth includes new investing and market changes.</p>
+    </>}
+  </section>;
+
+  // Budget over the months: category spending per month (bars) vs the total of that month's limits (dashed).
+  const budgetKeys = Array.from({ length: 12 }, (_, i) => monthKey(i - 11));
+  const allBudget = budgetMonths(entries, budgets, budgetKeys);
+  const firstUsed = allBudget.findIndex(b => b.spent > 0 || b.limit > 0);
+  const bRows = firstUsed < 0 ? [] : allBudget.slice(firstUsed);
+  const bBand = bRows.length ? innerW / bRows.length : innerW;
+  const bx = (i: number) => M.left + bBand * i + bBand / 2;
+  const bMax = niceMax(Math.max(1, ...bRows.flatMap(b => [b.spent, b.limit])));
+  const by = (v: number) => M.top + innerH - (v / bMax) * innerH;
+  const bBarW = Math.max(6, Math.min(40, bBand * 0.6));
+  const bTip = bHover !== null ? bRows[bHover] : null;
+  const bLabelEvery = Math.max(1, Math.ceil(bRows.length / Math.max(3, Math.floor(innerW / 58))));
+  const limitPath = bRows.map((b, i) => (b.limit > 0 ? `${i && bRows[i - 1].limit > 0 ? "L" : "M"}${(M.left + bBand * i).toFixed(1)},${by(b.limit).toFixed(1)} L${(M.left + bBand * (i + 1)).toFixed(1)},${by(b.limit).toFixed(1)}` : "")).join(" ");
+  const overMonths = bRows.filter(b => b.limit > 0 && b.spent > b.limit).length;
+  const budgetSection = <section className="tr-card">
+    <div className="tr-head"><div><h2>Budget over the months</h2><p>What you spent by category each month (orange) against your monthly limits (dashed). {overMonths ? `Over budget in ${overMonths} of ${bRows.filter(b => b.limit > 0).length} months.` : bRows.some(b => b.limit > 0) ? "Within budget every month so far. 🎉" : "Set limits in This month to see the dashed budget line."}</p></div><Link href="/month" className="text-link">This month →</Link></div>
+    {bRows.length < 1 ? <p className="side-empty">Log spending by category in <Link href="/month">This month</Link> and this chart fills in month by month.</p> : <>
+      <ul className="tr-legend"><li><i style={{ background: "#f47230" }} />Spent (by category)</li><li><i className="tr-dash-key" />Monthly limit</li></ul>
+      <div className="tr-chart">
+        <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} role="img" aria-label="Columns: spending per month against monthly budget limits">
+          {[0, 0.25, 0.5, 0.75, 1].map(t => <g key={t}><line x1={M.left} x2={W - M.right} y1={by(bMax * t)} y2={by(bMax * t)} className="tr-grid" /><text x={M.left - 8} y={by(bMax * t) + 4} textAnchor="end" className="tr-axis">{shortMoney(bMax * t, code)}</text></g>)}
+          {bHover !== null && <rect x={M.left + bBand * bHover} y={M.top} width={bBand} height={innerH} className="tr-hoverband" />}
+          {bRows.map((b, i) => b.spent > 0 && <g key={b.key}><path d={topRounded(bx(i) - bBarW / 2, by(b.spent), bBarW, M.top + innerH - by(b.spent), 4)} fill="#f47230" />{b.limit > 0 && b.spent > b.limit && <text x={bx(i)} y={by(b.spent) - 6} textAnchor="middle" className="tr-flag">!</text>}</g>)}
+          <path d={limitPath} className="tr-ref" fill="none" />
+          <line x1={M.left} x2={W - M.right} y1={M.top + innerH} y2={M.top + innerH} className="tr-baseline" />
+          {bRows.map((b, i) => (i === bRows.length - 1 || (i % bLabelEvery === 0 && bRows.length - 1 - i >= bLabelEvery)) && <text key={b.key} x={bx(i)} y={H - 10} textAnchor="middle" className="tr-axis">{b.label}</text>)}
+          {bRows.map((b, i) => <rect key={`b-${b.key}`} x={M.left + bBand * i} y={M.top} width={bBand} height={innerH} fill="transparent" tabIndex={0} role="button" aria-label={`${b.label}: spent ${money(b.spent)}${b.limit ? ` of ${money(b.limit)} limit` : ""}`} onMouseEnter={() => setBHover(i)} onFocus={() => setBHover(i)} onClick={() => setBHover(i)} onMouseLeave={() => setBHover(null)} onBlur={() => setBHover(null)} />)}
+        </svg>
+        {bTip && bHover !== null && <div className="tr-tip" style={{ left: `${Math.min(78, Math.max(4, (bx(bHover) / W) * 100 - 11))}%` }} role="status"><strong>{bTip.label}</strong><span><i style={{ background: "#f47230" }} />Spent <b>{money(bTip.spent)}</b></span>{bTip.limit > 0 && <span>Limit <b>{money(bTip.limit)}</b></span>}{bTip.limit > 0 && <span className={bTip.spent > bTip.limit ? "tr-over" : ""}>{bTip.spent > bTip.limit ? "Over by" : "Under by"} <b>{money(Math.abs(bTip.limit - bTip.spent))}</b></span>}</div>}
+      </div>
+      {overMonths > 0 && <p className="tr-note">“!” marks a month over the limit.</p>}
     </>}
   </section>;
 
@@ -227,7 +268,7 @@ export default function TrendsPage() {
         </div>
       </section>
 
-      <section className="tr-card">
+      {trackBudget ? <>{budgetSection}<section className="tr-card">
         <div className="tr-head"><div><h2>Spending by category</h2><p>{range === "12" ? "Last 12 months of budget entries, compared with the 12 months before." : "All your budget entries."}</p></div><Link href="/save-more" className="text-link">Hunt leaks →</Link></div>
         {categories.length ? <ul className="tr-cats">{categories.slice(0, 8).map(c => <li key={c.category}>
           <span className="tr-cat-name">{CATEGORY_LABELS[c.category] ?? c.category}</span>
@@ -235,7 +276,7 @@ export default function TrendsPage() {
           <b>{money(c.total)}</b>
           <small>{c.change === null ? "" : `${c.change >= 0 ? "▲" : "▼"} ${Math.abs(Math.round(c.change))}%`}</small>
         </li>)}</ul> : <p className="side-empty">Log spending <Link href="/month">by category in This month</Link> (or import a statement CSV) to see which categories take the most, and whether they’re shrinking.</p>}
-      </section>
+      </section></> : <section className="tr-card tr-budget-off"><h2>Budget tracking is off</h2><p>You log one spending total each month, which keeps things simple. To see where your money goes by category, with limits and month-by-month budget charts, choose <b>By category (budget)</b> in This month.</p><Link href="/month" className="text-link">Turn on budget tracking →</Link></section>}
       <p className="journey-note">Months you didn’t log are skipped. Figures come from your check-ins: take-home, EPF/NPS from salary, spending (excluding investing and EMIs), investing and EMIs.</p>
     </>}</>}
   </main><Footer /></>;

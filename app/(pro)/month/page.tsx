@@ -36,6 +36,8 @@ export default function ThisMonthPage() {
   const [limitDraft, setLimitDraft] = useState<Partial<Record<MonthCategory, string>>>({});
   const [editLimits, setEditLimits] = useState(false);
   const [limitsFrom, setLimitsFrom] = useState<string | null>(null);
+  const [prevSums, setPrevSums] = useState<ReturnType<typeof categorySums> | null>(null); // last month, for ▲/▼
+  const [trackColumn, setTrackColumn] = useState(false); // migration 0029 applied?
   const [usualSpent, setUsualSpent] = useState(0); // average of up to 3 earlier months (or the profile), to spot half-logged months // month the shown limits were set in
   const [logged, setLogged] = useState(false);
   const [history, setHistory] = useState<{ month_start: string; invested: number }[]>([]);
@@ -69,13 +71,16 @@ export default function ThisMonthPage() {
       if (!session?.user) { setUserId(null); return; }
       const uid = session.user.id;
       setUserId(uid);
-      const [checkins, profile, loans, monthEntries, budgets] = await Promise.all([
+      const [checkins, profile, loans, monthEntries, budgets, prevEntries] = await Promise.all([
         supabase.from("monthly_checkins").select("*").eq("user_id", uid).order("month_start", { ascending: false }).limit(24),
         supabase.from("financial_profiles").select("*").eq("user_id", uid).maybeSingle(),
         supabase.from("financial_accounts").select("monthly_payment").eq("user_id", uid).eq("kind", "liability"),
         supabase.from("budget_transactions").select("id, spent_on, category, amount, note").eq("user_id", uid).eq("month_start", m).order("spent_on", { ascending: false }),
         supabase.from("monthly_budgets").select("month_start, category, target_amount").eq("user_id", uid).lte("month_start", m).order("month_start", { ascending: false }).limit(40),
+        supabase.from("budget_transactions").select("id, spent_on, category, amount, note").eq("user_id", uid).eq("month_start", monthOf(-1, m)),
       ]);
+      const prevList = ((prevEntries.data ?? []) as Entry[]).map(e => ({ ...e, amount: Number(e.amount), note: e.note ?? "" }));
+      setPrevSums(prevList.length ? categorySums(prevList) : null);
       const rows = checkins.data ?? [];
       setHistory(rows.map(r => ({ month_start: r.month_start, invested: Number(r.invested) })));
       setCode(countryFromCurrency(profile.data?.currency));
@@ -115,7 +120,10 @@ export default function ThisMonthPage() {
         }
       } catch { /* storage unavailable */ }
       setForm(next);
-      setMode(spendingTotal(categorySums(list)) > 0 ? "category" : "total");
+      // The person's saved choice wins; otherwise guess from whether they already have category entries.
+      const track = profile.data?.track_budget;
+      setTrackColumn(Boolean(profile.data && "track_budget" in profile.data));
+      setMode(track === true ? "category" : track === false ? "total" : spendingTotal(categorySums(list)) > 0 ? "category" : "total");
     } catch (e) { setMessage(e instanceof Error ? e.message : "Could not load this month."); }
     finally { setLoading(false); }
   }, []);
@@ -132,6 +140,7 @@ export default function ThisMonthPage() {
   const sums = useMemo(() => categorySums(entries), [entries]);
   const shown = (c: MonthCategory) => (typed[c] !== undefined ? n(typed[c]!) : sums[c].total);
   const categoryTotal = MONTH_CATEGORIES.reduce((s, c) => s + shown(c.id), 0);
+  const prevTotal = prevSums ? spendingTotal(prevSums) : 0;
   const spent = mode === "category" ? categoryTotal : n(form.spentTotal);
   const summary = monthSummary({ takeHome: n(form.takeHome), salaryPf: n(form.salaryPf), salaryPension: n(form.salaryPension), spent, invested: n(form.invested), emis: n(form.emis) });
   const monthName = new Date(`${month}T12:00:00`).toLocaleDateString("en-IN", { month: "long", year: "numeric" });
@@ -180,6 +189,13 @@ export default function ThisMonthPage() {
     setLimitsFrom(month); setEditLimits(false); setLimitDraft({});
   }
   const draftAll = (fn: (c: MonthCategory) => number) => setLimitDraft(Object.fromEntries(MONTH_CATEGORIES.map(c => [c.id, String(Math.max(0, Math.round(fn(c.id) / 100) * 100))])));
+
+  /** Remember whether this person tracks a category budget (also shows/hides budget charts on Trends). */
+  async function chooseMode(next: "total" | "category") {
+    setMode(next);
+    const supabase = createClient();
+    if (supabase && userId && trackColumn) await supabase.from("financial_profiles").update({ track_budget: next === "category" }).eq("user_id", userId);
+  }
 
   async function addEntry() {
     const supabase = createClient();
@@ -235,7 +251,7 @@ export default function ThisMonthPage() {
     </div>
 
     {loading ? <p className="profile-status">Loading {monthName}…</p> : !userId ? <section className="profile-card"><p>Sign in to log your month.</p><Link href="/" className="button button-primary">Return home to sign in</Link></section> : <>
-      {isCurrent && <QuickLog compact onSaved={() => void loadEntries(userId, month)} onCheckinFields={fields => setForm(f => applyFields(f, fields as Record<string, number>))} />}
+      {isCurrent && <QuickLog compact onSaved={() => void loadEntries(userId, month)} onCheckinFields={fields => setForm(f => applyFields(f, fields as Record<string, number>))} onSpends={mode === "total" ? sum => setForm(f => ({ ...f, spentTotal: String(n(f.spentTotal) + sum) })) : undefined} />}
       {source && <p className="tm-source">{source}</p>}
       {message && <p className="delete-error" role="alert">{message}</p>}
 
@@ -251,13 +267,13 @@ export default function ThisMonthPage() {
 
       <section className="tm-card">
         <div className="tm-card-head"><h2>🛒 Spending</h2>
-          <div className="tr-range tm-mode" role="group" aria-label="How to log spending">{([["total", "Just a total"], ["category", "By category"]] as const).map(([id, label]) => <button key={id} type="button" className={mode === id ? "on" : ""} aria-pressed={mode === id} onClick={() => setMode(id)}>{label}</button>)}</div>
+          <div className="tr-range tm-mode" role="group" aria-label="How to log spending">{([["total", "Just a total"], ["category", "By category (budget)"]] as const).map(([id, label]) => <button key={id} type="button" className={mode === id ? "on" : ""} aria-pressed={mode === id} onClick={() => void chooseMode(id)}>{label}</button>)}</div>
         </div>
         <p className="tm-help">Everything you spent except investing and loan EMIs (those come next).</p>
         {mode === "total" ? <>
           <div className="tm-grid one"><Amount label="Total spent this month" value={form.spentTotal} onChange={set("spentTotal")} symbol={country.symbol} /></div>
           {categoryTotal > 0 && Math.abs(categoryTotal - n(form.spentTotal)) > 1 && <p className="import-warning">Your categories add up to {money(categoryTotal)}. <button type="button" className="text-link tm-inline" onClick={() => setMode("category")}>Use categories instead</button></p>}
-          <p className="tm-hint">Want to see where it goes? Switch to <b>By category</b>, or add spends with the one-line box above.</p>
+          <p className="tm-hint">Want to see where your money goes, with limits and charts? Switch to <b>By category (budget)</b>. FIREpath remembers your choice.</p>
         </> : <>
           <div className="tm-limits-bar">
             <p>{editLimits ? "Set a monthly limit for any category you want to watch. Leave blank for no limit. Limits apply from this month and carry forward until you change them." : Object.keys(limits).length ? <>Monthly limits {limitsFrom && limitsFrom !== month ? <>carried over from <b>{new Date(`${limitsFrom}T12:00:00`).toLocaleDateString("en-IN", { month: "long", year: "numeric" })}</b></> : "set for this month"}. Prices rise every year, so review them now and then.</> : "Optional: set monthly limits to see how much is left in each category."}</p>
@@ -310,6 +326,25 @@ export default function ThisMonthPage() {
           <Amount label="Loan EMIs & card payments" hint="Home, car, personal, gold loans, credit card" value={form.emis} onChange={set("emis")} symbol={country.symbol} />
         </div>
       </section>
+
+      {mode === "category" && categoryTotal > 0 && (() => {
+        // Where the month's money went: one bar per category (spending colour), limit as a tick, change vs last month.
+        const bars = MONTH_CATEGORIES.map(c => ({ ...c, value: shown(c.id), limit: limits[c.id] ?? 0, prev: prevSums ? prevSums[c.id].total : 0 })).filter(b => b.value > 0 || b.limit > 0).sort((a, b) => b.value - a.value);
+        const max = Math.max(...bars.map(b => Math.max(b.value, b.limit)), 1);
+        return <section className="tm-card tm-chart">
+          <div className="tm-card-head"><h2>📊 Where {monthName.split(" ")[0]}’s money went</h2><small>{money(categoryTotal)} spent{prevTotal > 0 ? ` · ${categoryTotal >= prevTotal ? "▲" : "▼"} ${money(Math.abs(categoryTotal - prevTotal))} vs last month` : ""}</small></div>
+          <ul className="tm-bars">{bars.map(b => <li key={b.id}>
+            <span className="tm-bar-name">{b.emoji} {b.label}</span>
+            <span className="tm-bar-track">
+              <i className={b.limit > 0 && b.value > b.limit ? "over" : ""} style={{ width: `${(b.value / max) * 100}%` }} />
+              {b.limit > 0 && <em style={{ left: `${(b.limit / max) * 100}%` }} title={`Limit ${money(b.limit)}`} />}
+            </span>
+            <b>{money(b.value)}</b>
+            <small>{b.limit > 0 ? (b.value > b.limit ? `${money(b.value - b.limit)} over limit` : `${Math.round((b.value / b.limit) * 100)}% of limit`) : ""}{prevSums && b.prev > 0 ? `${b.limit > 0 ? " · " : ""}${b.value >= b.prev ? "▲" : "▼"} ${money(Math.abs(b.value - b.prev))}` : ""}</small>
+          </li>)}</ul>
+          <p className="tm-hint">Orange bars: spent this month. Dark tick: your limit{prevSums ? ". ▲/▼: change vs last month" : ""}. Red: over the limit.</p>
+        </section>;
+      })()}
 
       <section className="tm-card tm-summary">
         <h2>✅ {monthName.split(" ")[0]} at a glance</h2>

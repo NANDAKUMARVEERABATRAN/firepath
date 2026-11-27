@@ -19,7 +19,7 @@ const monthStart = (date = today()) => `${date.slice(0, 7)}-01`;
 type SpeechCtor = new () => { lang: string; interimResults: boolean; continuous: boolean; start: () => void; stop: () => void; onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null; onend: (() => void) | null; onerror: (() => void) | null };
 
 /** "Tell FIREpath in one line": AI turns a sentence into check-in fields, spending entries and balances to review. */
-export default function QuickLog({ compact = false, onSaved, onCheckinFields }: { compact?: boolean; onSaved?: () => void; /** On the This month page: put check-in numbers into the form instead of saving them. */ onCheckinFields?: (fields: Partial<Record<keyof CheckinFields, number>>) => void }) {
+export default function QuickLog({ compact = false, onSaved, onCheckinFields, onSpends }: { compact?: boolean; onSaved?: () => void; /** On the This month page: put check-in numbers into the form instead of saving them. */ onCheckinFields?: (fields: Partial<Record<keyof CheckinFields, number>>) => void; /** Not tracking a category budget: add spends to the month's total instead of saving entries. */ onSpends?: (total: number) => void }) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -107,7 +107,8 @@ export default function QuickLog({ compact = false, onSaved, onCheckinFields }: 
         done.push(`${Object.keys(fields).length} check-in item${Object.keys(fields).length === 1 ? "" : "s"}`);
       }
       const spends = result.spending.filter((_, i) => pickSpend[i]).map(s => { const date = s.date ?? today(); return { user_id: userId, spent_on: date, month_start: monthStart(date), category: s.category, amount: s.amount, note: s.note }; });
-      if (spends.length) { const { error: e } = await supabase.from("budget_transactions").insert(spends); if (e) throw e; done.push(`${spends.length} spending entr${spends.length === 1 ? "y" : "ies"}`); }
+      if (spends.length && onSpends) { const sum = spends.reduce((s, x) => s + x.amount, 0); onSpends(sum); done.push(`${formatCountryMoney(sum, code)} added to this month’s spending (save the month to keep it)`); }
+      else if (spends.length) { const { error: e } = await supabase.from("budget_transactions").insert(spends); if (e) throw e; done.push(`${spends.length} spending entr${spends.length === 1 ? "y" : "ies"}`); }
       let holdingsSaved = 0;
       for (const [i, h] of result.holdings.entries()) {
         if (!pickHolding[i]) continue;
@@ -158,7 +159,7 @@ export default function QuickLog({ compact = false, onSaved, onCheckinFields }: 
         {checkinFields.map(([k, v]) => <label key={k} className="ql-row"><input type="checkbox" checked={Boolean(pickCheckin[k])} onChange={e => setPickCheckin(p => ({ ...p, [k]: e.target.checked }))} /><span>{CHECKIN_LABELS[k]}</span><b>{money(v)}</b>{checkinExists && <em>was {money(currentCheckin[k] ?? 0)}</em>}</label>)}
       </div>}
       {result.spending.length > 0 && <div className="ql-block">
-        <h3>Spending entries (Budget)</h3>
+        <h3>{onSpends ? "Spending (added to this month’s total)" : "Spending entries (Budget)"}</h3>
         {result.spending.map((s, i) => <div key={i} className="ql-row">
           <input type="checkbox" checked={Boolean(pickSpend[i])} onChange={e => setPickSpend(p => p.map((x, j) => (j === i ? e.target.checked : x)))} aria-label={`Save ${s.note || CATEGORY_LABELS[s.category]}`} />
           <span>{s.note || CATEGORY_LABELS[s.category]}</span>

@@ -699,3 +699,16 @@ button.tm-limit{border:0;padding:0;cursor:pointer;text-align:left;width:100%;fon
 .tr-wealth-facts{margin:10px 0 6px}
 .tr-wealth-facts strong{font-size:20px}
 .tr-dash-key{display:inline-block;width:16px;height:0;border-top:2px dashed #9fb3c8}
+.tm-chart .tm-card-head small{font-size:13px;color:#647487}
+.tm-bars{list-style:none;padding:0;margin:12px 0 4px;display:flex;flex-direction:column;gap:9px}
+.tm-bars li{display:grid;grid-template-columns:190px 1fr 100px;grid-template-rows:auto auto;column-gap:12px;align-items:center;font-size:13px}
+.tm-bar-name{color:var(--navy);font-weight:600}
+.tm-bar-track{position:relative;height:14px;background:#f3f6f8;border-radius:0 4px 4px 0}
+.tm-bar-track i{display:block;height:100%;background:#f47230;border-radius:0 4px 4px 0;min-width:2px}
+.tm-bar-track i.over{background:#c2412d}
+.tm-bar-track em{position:absolute;top:-3px;width:3px;height:20px;background:var(--navy);border-radius:2px;transform:translateX(-1px)}
+.tm-bars b{text-align:right;color:var(--navy)}
+.tm-bars small{grid-column:2/-1;font-size:11px;color:#647487}
+@media(max-width:640px){.tm-bars li{grid-template-columns:1fr 90px}.tm-bar-track{grid-column:1/-1;grid-row:2}.tm-bars small{grid-column:1/-1}}
+.tr-budget-off h2{font-family:Manrope,sans-serif;color:var(--navy);font-size:18px;margin:0 0 6px}
+.tr-budget-off p{font-size:13px;color:var(--muted);line-height:1.6;margin:0 0 8px}
