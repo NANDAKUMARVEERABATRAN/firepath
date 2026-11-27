@@ -8,12 +8,12 @@ import { createClient } from "@/lib/supabase/client";
 import { getProStatus, hasPro, type ProStatus, type SubscriptionRow } from "@/lib/subscription";
 
 const rows: [string, boolean, boolean][] = [
-  ["FIRE calculator & freedom number", true, true],
-  ["11-level Freedom Path, XP, ranks & badges", true, true],
-  ["FIRE score & daily book lessons", true, true],
-  ["This month: income, spending, budget & check-up", true, true],
-  ["Portfolio & net worth (add items yourself)", true, true],
-  ["Goals with monthly SIP targets (free: 1 goal)", false, true],
+  ["FIRE calculator & your freedom number", true, true],
+  ["Your freedom date & 11-level Freedom Path, XP, ranks & badges", false, true],
+  ["FIRE score & daily book lessons", false, true],
+  ["This month: income, spending, budget & check-up", false, true],
+  ["Portfolio & net worth tracking", false, true],
+  ["Unlimited goals with monthly SIP targets", false, true],
   ["AI one-line logging (English, Hindi, Hinglish)", false, true],
   ["Import your CAS or Zerodha/Groww holdings", false, true],
   ["FIRE plan: step-up, Lean/Fat FIRE, life after FIRE", false, true],

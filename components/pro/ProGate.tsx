@@ -4,6 +4,7 @@ import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
+import FreedomNumberCard from "@/components/pro/FreedomNumberCard";
 import Paywall from "@/components/pro/Paywall";
 import Celebration from "@/components/game/Celebration";
 import { ProContext } from "@/components/pro/ProContext";
@@ -13,7 +14,7 @@ import { getProStatus, hasPro, isProOnlyPage, PAYMENTS_LIVE, PRICING, REFERRAL_K
 type GateState = { loading: boolean; signedIn: boolean; status: ProStatus; setupMissing: boolean; configured: boolean };
 
 /**
- * Wraps every app page. Signed-in people get the free plan; a few pages and features need Pro
+ * Wraps every app page. Free: the calculator on "/" and your freedom number; every app page except Subscription needs Pro
  * (trial, paid, or free access while online payments aren't open yet).
  */
 export default function ProGate({ children }: { children: ReactNode }) {
@@ -70,11 +71,11 @@ export default function ProGate({ children }: { children: ReactNode }) {
     </ProContext.Provider>;
   }
 
-  // Free plan: Pro-only pages show what Pro adds; everything else works.
-  if (isProOnlyPage(pathname)) return <><Header /><main className="container pro-page">{celebration}<Paywall status={status} signedIn onStarted={() => { setWelcome("trial"); void check(); }} feature={pathname} /></main><Footer /></>;
+  // Free plan: your freedom number + the paywall on every app page except Subscription.
+  if (isProOnlyPage(pathname)) return <><Header /><main className="container pro-page">{celebration}<FreedomNumberCard /><Paywall status={status} signedIn onStarted={() => { setWelcome("trial"); void check(); }} feature={pathname} /></main><Footer /></>;
   const pausedUntil = status.state === "paused" && status.pausedUntil ? status.pausedUntil.toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "";
   return <ProContext.Provider value={{ pro: false }}>
-    {pausedUntil ? <a className="pro-bar free" href="/account">⏸️ Pro is paused until {pausedUntil}. Free features keep working. Resume any time →</a> : <a className="pro-bar free" href="/pricing">You’re on the free plan. Pro adds money trends, the FIRE plan, Save more, the tax planner, monthly reports, AI logging and portfolio import →</a>}
+    {pausedUntil ? <a className="pro-bar free" href="/account">⏸️ Pro is paused until {pausedUntil}. Your data is safe. Resume any time →</a> : <a className="pro-bar free" href="/pricing">You’re on the free plan: the FIRE calculator and your freedom number. Pro unlocks everything else →</a>}
     {celebration}
     {children}
   </ProContext.Provider>;

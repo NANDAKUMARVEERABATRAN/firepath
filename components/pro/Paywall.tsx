@@ -102,7 +102,7 @@ export default function Paywall({ status, onStarted, signedIn, feature }: Props)
       <div className="paywall-head">
         <span className="paywall-crown"><Crown size={26} /></span>
         <p className="eyebrow">FIREPATH PRO</p>
-        <h1>{feature ? `${FEATURE_NAMES[feature] ?? "This"} is part of Pro.` : expired ? "Your Pro access has ended — your data is safe." : "Unlock your full journey to financial freedom."}</h1>
+        <h1>{feature && FEATURE_NAMES[feature] ? `${FEATURE_NAMES[feature]} is part of Pro.` : expired ? "Your Pro access has ended — your data is safe." : "Unlock your full journey to financial freedom."}</h1>
         <p>{expired ? "Pick a plan to continue right where you left off. Your profile, goals, streaks and XP are all waiting." : canTrial ? `Try everything free for ${PRICING.trialDays} days. No card needed. Cancel anytime.` : "Choose a plan to continue."}</p>
       </div>
 
@@ -133,7 +133,7 @@ export default function Paywall({ status, onStarted, signedIn, feature }: Props)
           {message && <p className="profile-status" role="status">{message}</p>}
         </div>
       </div>
-      <p className="paywall-free"><Lock size={13} /> The FIRE calculator stays free forever. <a href="/#fire-calculator">Use the free calculator →</a></p>
+      <p className="paywall-free"><Lock size={13} /> The FIRE calculator and your freedom number stay free forever. <a href="/#fire-calculator">Use the free calculator →</a></p>
     </section>
   );
 }

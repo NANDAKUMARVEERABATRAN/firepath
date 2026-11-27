@@ -43,11 +43,11 @@ export const REFERRAL_TRIAL_DAYS = 30;
 export const REFERRAL_REWARD = { signup: 100, paid: 990 } as const;
 
 /**
- * Free tier: everything after sign-in is free EXCEPT these pages and a few Pro features
- * (AI one-line logging, CAS/app import, more than one goal).
+ * Free: the FIRE calculator on "/" (no sign-in) and your own freedom number (shown above the paywall).
+ * Everything else after sign-in is Pro. Subscription & account deletion always stay reachable.
  */
-export const PRO_ONLY_PAGES = ["/trends", "/save-more", "/report", "/plan", "/tax"] as const;
+export const FREE_APP_PAGES = ["/account"] as const;
 export const FREE_GOAL_LIMIT = 1;
-export const isProOnlyPage = (path: string | null | undefined) => (PRO_ONLY_PAGES as readonly string[]).includes(path ?? "");
+export const isProOnlyPage = (path: string | null | undefined) => !(FREE_APP_PAGES as readonly string[]).includes(path ?? "");
 
 export const PAUSE_MONTHS = [1, 2, 3] as const;

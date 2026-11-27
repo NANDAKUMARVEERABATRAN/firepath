@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePro } from "@/components/pro/ProContext";
-import { isProOnlyPage, REFERRAL_KEY } from "@/lib/subscription";
+import { REFERRAL_KEY } from "@/lib/subscription";
 import { usePathname } from "next/navigation";
 import { Flame, Menu, PiggyBank, Plus, TrendingUp, UserRound, Wallet, X } from "lucide-react";
 import AuthButton from "@/components/auth/AuthButton";
@@ -35,7 +34,7 @@ export default function Header() {
   const { country, setCountry } = useCountry();
   const isLanding = pathname === "/";
   const hub = HUBS.find(h => h.pages.some(p => p.href === pathname)) ?? null;
-  const { pro } = usePro();
+
   // A friend's link (?ref=CODE) is remembered until sign-in, then claimed once (see ProGate).
   useEffect(() => {
     const ref = new URLSearchParams(window.location.search).get("ref");
@@ -70,7 +69,7 @@ export default function Header() {
         </div>
       </header>
       {hub && <nav className="hub-tabs" aria-label={`${hub.label} pages`}><div className="container">
-        {hub.pages.map(p => <a key={p.href} href={p.href} className={pathname === p.href ? "active" : undefined} aria-current={pathname === p.href ? "page" : undefined}>{p.label}{!pro && isProOnlyPage(p.href) && <em className="pro-tag">PRO</em>}</a>)}
+        {hub.pages.map(p => <a key={p.href} href={p.href} className={pathname === p.href ? "active" : undefined} aria-current={pathname === p.href ? "page" : undefined}>{p.label}</a>)}
       </div></nav>}
       {!isLanding && (
         <nav className="tab-bar" aria-label="App">
