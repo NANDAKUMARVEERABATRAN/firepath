@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Mic, MicOff, Sparkles } from "lucide-react";
 import Celebration from "@/components/game/Celebration";
+import { ProLock, usePro } from "@/components/pro/ProContext";
 import { createClient } from "@/lib/supabase/client";
 import { countryFromCurrency, formatCountryMoney, type CountryCode } from "@/lib/country";
 import { holdingToAccount, matchAccount, SPEND_CATEGORIES, type CheckinFields, type QuickLogResult, type SpendCategory } from "@/lib/quickLog";
@@ -36,6 +37,7 @@ export default function QuickLog({ compact = false, onSaved, onCheckinFields, on
   const [mode, setMode] = useState<"ai" | "basic">("ai");
   const recognition = useRef<InstanceType<SpeechCtor> | null>(null);
   const money = (v: number) => formatCountryMoney(v, code);
+  const { pro } = usePro();
 
   async function context() {
     const supabase = createClient();
@@ -136,6 +138,7 @@ export default function QuickLog({ compact = false, onSaved, onCheckinFields, on
 
   const anyPicked = checkinFields.some(([k]) => pickCheckin[k]) || pickSpend.some(Boolean) || pickHolding.some(Boolean);
 
+  if (!pro) return <ProLock title="Tell FIREpath in one line" text="Type or say “salary 1.2 lakh, rent 25,000, Swiggy 1,800” and it fills everything in. English, Hindi or Hinglish." />;
   return <section className={`quicklog${compact ? " compact" : ""}`}>
     {celebrate && <Celebration title={celebrate.title} detail={celebrate.detail} onClose={() => setCelebrate(null)} />}
     <div className="quicklog-head"><Sparkles size={18} /><div><h2>Tell FIREpath in one line</h2><p>Type or say it the way you’d text a friend. English, Hindi or Hinglish. You review before anything is saved.</p></div></div>

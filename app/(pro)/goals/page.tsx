@@ -6,6 +6,8 @@ import { CheckCircle2, Plus, Target, Trash2 } from "lucide-react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import Celebration from "@/components/game/Celebration";
+import { ProLock, usePro } from "@/components/pro/ProContext";
+import { FREE_GOAL_LIMIT } from "@/lib/subscription";
 import { createClient } from "@/lib/supabase/client";
 import { formatMoney, loadFinancialState, type AccountRow } from "@/lib/financialState";
 import { analyzeGoal, applyLinkedSavings, goalCategories, monthsBetween, sideGoalCategories, statusLabel, type Goal, type GoalCategory } from "@/lib/goals";
@@ -51,6 +53,7 @@ export default function GoalsPage() {
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const { pro } = usePro();
   const [topUp, setTopUp] = useState<Record<string, string>>({});
   const [celebrate, setCelebrate] = useState<{ title: string; detail: string } | null>(null);
   const [wizard, setWizard] = useState<{ startAt: number } | null>(null);
@@ -240,7 +243,8 @@ export default function GoalsPage() {
 
       {!showForm && !wizard && <section className="goal-presets"><strong>Quick start:</strong>{(currency === "AED" ? uaePresets : presets).map(preset => <button key={preset.label} type="button" className="preset-chip" onClick={() => openForm(undefined, preset.draft)}>{preset.label}</button>)}<button type="button" className="button button-primary" onClick={() => openForm()}><Plus size={16} /> Custom goal</button></section>}
 
-      {showForm && <form className="profile-card goal-form" onSubmit={saveGoal}>
+      {showForm && !editingId && !pro && goals.filter(g => !g.completed_at).length >= FREE_GOAL_LIMIT && <ProLock title="More goals" text={`The free plan includes ${FREE_GOAL_LIMIT} active goal. Pro gives you unlimited goals: home, education, wedding, travel and more, each with its monthly SIP.`} />}
+      {showForm && !(!editingId && !pro && goals.filter(g => !g.completed_at).length >= FREE_GOAL_LIMIT) && <form className="profile-card goal-form" onSubmit={saveGoal}>
         <h2>{editingId ? "Edit goal" : "New goal"}</h2>
         {field("name", "Goal name", { required: true, maxLength: 80 })}
         <label className="profile-field"><span>Type</span><select value={draft.category} onChange={event => setDraft(current => ({ ...current, category: event.target.value as GoalCategory }))}>{goalCategories.filter(category => category.id !== "retirement" || category.id === draft.category).map(category => <option key={category.id} value={category.id}>{category.emoji} {category.label}</option>)}</select></label>

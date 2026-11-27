@@ -23,6 +23,7 @@ import { analyzeGoal, goalCategories, statusLabel } from "@/lib/goals";
 import { getLessonOfDay, lessons as allLessons } from "@/lib/wisdom";
 import { pickLesson, principlesInAction, type CoachSignals } from "@/lib/bookCoach";
 import { monthsToAutoFill, usualNumbers } from "@/lib/autoFill";
+import { FOUNDING, foundingOpen } from "@/lib/subscription";
 import { fireStyles, getWhyResult, styleTip } from "@/lib/fireWhy";
 import { inFutureMoney } from "@/lib/inflation";
 import { daysSince } from "@/lib/spendingCheckup";
@@ -386,6 +387,8 @@ export default function JourneyPage() {
 
           <ShareMilestone milestones={getMilestones({ fireProgress: game.metrics.fireProgress, rankName: game.rank.name, rankNumber: game.rank.rankNumber, streak: game.streak, levelsCleared: game.path.filter(level => level.cleared).length, freedomMonths: game.metrics.freedomMonths, lessons: state?.lessons.length ?? 0, progressGain: state ? getProgressSummary(state.snapshots).progressGain : 0 })} />
 
+          <a href="/invite" className="side-card feedback-teaser invite-teaser"><span>🎁</span><div><strong>Give a friend a month of Pro</strong><small>They get 30 days free, you earn points that pay for your plan.</small></div></a>
+          {foundingOpen() && <a href="/pricing" className="side-card feedback-teaser founding-teaser"><span>🏅</span><div><strong>Founding member: ₹{FOUNDING.yearly}/year for life</strong><small>First {FOUNDING.spots.toLocaleString("en-IN")} members only. Reserve now, no payment until it opens.</small></div></a>}
           <a href="/feedback" className="side-card feedback-teaser"><span>💡</span><div><strong>Got an idea for FIREpath?</strong><small>Tell us — earn points you can use to pay for Pro.</small></div></a>
 
           <section className="side-card">

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import LegalPage, { ContactBlock } from "@/components/legal/LegalPage";
 import { SITE, operatorName } from "@/lib/site";
-import { PRICING } from "@/lib/subscription";
+import { FOUNDING, PRICING, REFERRAL_REWARD, REFERRAL_TRIAL_DAYS } from "@/lib/subscription";
 import { REWARDS } from "@/lib/rewards";
 
 export const metadata: Metadata = { title: "Terms of Use | FIREpath" };
@@ -27,6 +27,9 @@ export default function Terms() {
       <li>Pro is offered monthly or yearly at the prices shown on our <a href="/pricing">pricing page</a> for your country, including any applicable taxes as stated at checkout. We’ll give you notice in the app before any price change applies to you.</li>
       <li>Paid plans <b>renew automatically</b> until you cancel. You can cancel at any time and keep access until the end of the period you’ve paid for. Refunds are covered by our <a href="/refund-policy">Refund &amp; Cancellation Policy</a>. Purchases made through Google Play also follow Google Play’s terms.</li>
       <li>Until paid checkout launches, we may continue to provide Pro features free of charge after a trial ends.</li>
+      <li><b>Free plan:</b> after sign-in, core features stay free. Some features are Pro only, as listed on our pricing page.</li>
+      <li><b>Founding members:</b> the first {FOUNDING.spots.toLocaleString("en-IN")} people who reserve a spot before {FOUNDING.until} can subscribe yearly at ₹{FOUNDING.yearly}. That price stays for as long as the yearly plan renews without a break; if you cancel and later return, normal prices apply.</li>
+      <li><b>Referrals:</b> friends who sign up within 7 days of using your link get a {REFERRAL_TRIAL_DAYS}-day trial, and you earn reward points ({REFERRAL_REWARD.signup} when they join, {REFERRAL_REWARD.paid} when they first pay). Referrals must be real people; we may remove points from self-referrals or fake accounts.</li>
     </ul>
 
     <h2>4. Reward points</h2>

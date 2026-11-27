@@ -15,7 +15,7 @@ export default function Privacy() {
       <li><b>Financial information you choose to enter:</b> age, income, expenses, savings, investments, property, loans, insurance cover, goals, budgets, spending entries and monthly check-ins.</li>
       <li><b>Your plan and preferences:</b> FIRE assumptions, step-up plan, country and currency, your reasons for wanting financial freedom and your dream age.</li>
       <li><b>App activity:</b> lessons completed, badges, levels, streaks and monthly progress snapshots that power your charts and reports.</li>
-      <li><b>Feedback and rewards:</b> suggestions you send us, our replies, and your reward points.</li>
+      <li><b>Feedback, rewards and referrals:</b> suggestions you send us, our replies, your reward points, and, if you use or share an invite link, who invited whom (so both of you get the reward). The person who invited you sees only that someone joined, not your details.</li>
       <li><b>Subscription details:</b> your plan, trial dates and cancellation reason (if you give one). When paid plans launch, payments are processed by our payment provider; <b>we never see or store your full card or UPI details.</b></li>
       <li><b>On your device:</b> sign-in cookies, plus browser storage for your calculator inputs and country choice. The free calculator works without an account and its numbers stay on your device unless you sign up.</li>
       <li><b>Voice entry:</b> if you use the microphone, speech is converted to text by your browser or phone’s speech service (for example Google in Chrome). We only receive the resulting text, and only when you save the form.</li>

@@ -28,3 +28,20 @@ export const hasPro = (status: ProStatus) => status.state === "trial" || status.
 /** The free calculator stores its inputs here so sign-up never asks for them again. */
 export const CALCULATOR_KEY = "ff-calculator";
 export type CalculatorSnapshot = { age: number; retireAge: number; expenses: number; assets: number; monthlyInvestment: number };
+
+/** Founding members: the first 1,000 people get this yearly price, locked for life (India). */
+export const FOUNDING = { yearly: 599, spots: 1000, until: "2027-01-31" } as const;
+export const foundingOpen = (now = new Date()) => now.toISOString().slice(0, 10) <= FOUNDING.until;
+
+/** Referral links: ?ref=CODE is remembered until sign-in, then claimed once. Friends get a 30-day trial. */
+export const REFERRAL_KEY = "ff-ref";
+export const REFERRAL_TRIAL_DAYS = 30;
+export const REFERRAL_REWARD = { signup: 100, paid: 990 } as const;
+
+/**
+ * Free tier: everything after sign-in is free EXCEPT these pages and a few Pro features
+ * (AI one-line logging, CAS/app import, more than one goal).
+ */
+export const PRO_ONLY_PAGES = ["/trends", "/save-more", "/report", "/plan"] as const;
+export const FREE_GOAL_LIMIT = 1;
+export const isProOnlyPage = (path: string | null | undefined) => (PRO_ONLY_PAGES as readonly string[]).includes(path ?? "");

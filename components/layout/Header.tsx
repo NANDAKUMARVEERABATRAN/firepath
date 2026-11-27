@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { usePro } from "@/components/pro/ProContext";
+import { isProOnlyPage, REFERRAL_KEY } from "@/lib/subscription";
 import { usePathname } from "next/navigation";
 import { Flame, Menu, PiggyBank, Plus, TrendingUp, UserRound, Wallet, X } from "lucide-react";
 import AuthButton from "@/components/auth/AuthButton";
@@ -22,7 +24,7 @@ const HUBS = [
     { href: "/accounts", label: "Portfolio" }, { href: "/goals", label: "Goals" }, { href: "/plan", label: "FIRE plan" },
   ] },
   { id: "me", label: "Me", icon: UserRound, href: "/profile", pages: [
-    { href: "/profile", label: "Profile" }, { href: "/feedback", label: "Ideas & rewards" }, { href: "/account", label: "Subscription" }, { href: "/pricing", label: "Pro plan" },
+    { href: "/profile", label: "Profile" }, { href: "/invite", label: "Invite friends" }, { href: "/feedback", label: "Ideas & rewards" }, { href: "/account", label: "Subscription" }, { href: "/pricing", label: "Pro plan" },
   ] },
 ];
 const HUB_HINTS: Record<string, string> = { home: "Your progress, score and lessons", money: "This month, trends and saving", wealth: "What you own, your goals and FIRE plan", me: "Profile, rewards and subscription" };
@@ -33,6 +35,12 @@ export default function Header() {
   const { country, setCountry } = useCountry();
   const isLanding = pathname === "/";
   const hub = HUBS.find(h => h.pages.some(p => p.href === pathname)) ?? null;
+  const { pro } = usePro();
+  // A friend's link (?ref=CODE) is remembered until sign-in, then claimed once (see ProGate).
+  useEffect(() => {
+    const ref = new URLSearchParams(window.location.search).get("ref");
+    if (ref && /^[A-Za-z0-9]{6}$/.test(ref)) { try { window.localStorage.setItem(REFERRAL_KEY, ref.toUpperCase()); } catch { /* storage unavailable */ } }
+  }, []);
 
   return (
     <>
@@ -62,7 +70,7 @@ export default function Header() {
         </div>
       </header>
       {hub && <nav className="hub-tabs" aria-label={`${hub.label} pages`}><div className="container">
-        {hub.pages.map(p => <a key={p.href} href={p.href} className={pathname === p.href ? "active" : undefined} aria-current={pathname === p.href ? "page" : undefined}>{p.label}</a>)}
+        {hub.pages.map(p => <a key={p.href} href={p.href} className={pathname === p.href ? "active" : undefined} aria-current={pathname === p.href ? "page" : undefined}>{p.label}{!pro && isProOnlyPage(p.href) && <em className="pro-tag">PRO</em>}</a>)}
       </div></nav>}
       {!isLanding && (
         <nav className="tab-bar" aria-label="App">

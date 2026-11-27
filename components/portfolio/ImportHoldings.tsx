@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { FileUp, Lock, ShieldCheck, X } from "lucide-react";
 import Celebration from "@/components/game/Celebration";
+import { ProLock, usePro } from "@/components/pro/ProContext";
 import { createClient } from "@/lib/supabase/client";
 import { formatCountryMoney, type CountryCode } from "@/lib/country";
 import { autoMapColumns, findHeaderRow, parseCasText, planImport, rowsToHoldings, type ColumnMap, type ImportedHolding, type ImportInvestmentType, type ImportResult } from "@/lib/importHoldings";
@@ -40,6 +41,7 @@ export default function ImportHoldings({ existing, country, onImported }: { exis
   const [celebrate, setCelebrate] = useState<{ title: string; detail: string } | null>(null);
 
   const money = (value: number) => formatCountryMoney(value, country);
+  const { pro } = usePro();
   const sources = SOURCES.filter(s => !s.india || country === "IN");
   const sourceKey = source === "app" ? `app_${(file?.name.match(/zerodha|kite|console|groww|kuvera|indmoney|upstox|coin|etmoney/i)?.[0] ?? "export").toLowerCase()}` : source === "demat_cas" ? undefined : "mf_cas";
 
@@ -113,6 +115,7 @@ export default function ImportHoldings({ existing, country, onImported }: { exis
     } finally { setBusy(false); }
   }
 
+  if (!pro) return <ProLock title="Import your portfolio" text="Upload a CAMS/KFintech or NSDL/CDSL CAS, or a Zerodha/Groww export, and every fund and stock updates in one go." />;
   if (!open) return <>
     {celebrate && <Celebration title={celebrate.title} detail={celebrate.detail} onClose={() => setCelebrate(null)} />}
     <button type="button" className="import-launch" onClick={() => setOpen(true)}>
