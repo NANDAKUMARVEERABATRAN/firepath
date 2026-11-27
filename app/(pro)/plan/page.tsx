@@ -8,7 +8,16 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { countryFromCurrency, formatCountryMoney, shortCountryMoney } from "@/lib/country";
 import { inFutureMoney, inTodayMoney } from "@/lib/inflation";
-import { simulateDrawdown, sustainableWithdrawalRate } from "@/lib/retirementDrawdown";
+import { corpusNeeded, simulateDrawdown, sustainableWithdrawalRate } from "@/lib/retirementDrawdown";
+import { getWhyResult } from "@/lib/fireWhy";
+
+type IncomeKind = "none" | "parttime" | "business" | "other";
+const INCOME_KINDS: { id: IncomeKind; emoji: string; label: string }[] = [
+  { id: "none", emoji: "🌴", label: "No income" },
+  { id: "parttime", emoji: "🎨", label: "Part-time, freelance or passion work" },
+  { id: "business", emoji: "🚀", label: "Business income" },
+  { id: "other", emoji: "🏠", label: "Rent, pension or other" },
+];
 import { projectBreakdown, projectRetirementAssets, sumLaterAssets, type LaterAssetLot } from "@/lib/retirementProjection";
 
 type Currency = "INR" | "AED" | "USD";
@@ -29,6 +38,11 @@ export default function PlanPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [incomeKind, setIncomeKind] = useState<IncomeKind>("none"); // income after you stop working
+  const [afterIncome, setAfterIncome] = useState(0); // per month, today's money
+  const [afterIncomeYears, setAfterIncomeYears] = useState(10);
+  const [incomeColumns, setIncomeColumns] = useState(false); // migration 0031 applied?
+  const [incomeFromStyle, setIncomeFromStyle] = useState("");
   const [afterReturn, setAfterReturn] = useState(9); // yearly return after stopping work (set from the plan on load)
   const [planColumns, setPlanColumns] = useState(false); // retirement_expenses column exists (migration 0028)
 
@@ -44,12 +58,23 @@ export default function PlanPage() {
         if (!session?.user) { setLoading(false); return; }
         setSignedIn(true);
         const [profileResult, planResult, accountsResult] = await Promise.all([
-          supabase.from("financial_profiles").select("age, monthly_expenses, assets, fire_accessible_assets, later_retirement_assets, monthly_investment, monthly_investment_income, currency").eq("user_id", session.user.id).maybeSingle(),
+          supabase.from("financial_profiles").select("*").eq("user_id", session.user.id).maybeSingle(),
           supabase.from("fire_plans").select("*").eq("user_id", session.user.id).maybeSingle(),
           supabase.from("financial_accounts").select("*").eq("user_id", session.user.id),
         ]);
         if (!active) return;
         setPlanColumns(Boolean(planResult.data && "retirement_expenses" in planResult.data));
+        setIncomeColumns(Boolean(planResult.data && "after_fire_income" in planResult.data));
+        // Income after FIRE: the saved answer, else a starting guess from the person's FIRE style (their "why").
+        if (planResult.data?.after_fire_income_kind) {
+          setIncomeKind(planResult.data.after_fire_income_kind as IncomeKind);
+          setAfterIncome(Number(planResult.data.after_fire_income ?? 0));
+          setAfterIncomeYears(Number(planResult.data.after_fire_income_years ?? 10));
+        } else if (profileResult.data) {
+          const why = Array.isArray(profileResult.data.fire_reasons) && profileResult.data.fire_reasons.length ? getWhyResult(profileResult.data.fire_reasons) : null;
+          if (why?.style === "barista") { setIncomeKind("parttime"); setAfterIncome(Math.round(Number(profileResult.data.monthly_expenses ?? 0) * 0.3 / 1000) * 1000); setAfterIncomeYears(10); setIncomeFromStyle("Barista: you want to follow a passion or keep doing work you love"); }
+          else if (why?.style === "runway") { setIncomeKind("business"); setAfterIncome(0); setAfterIncomeYears(10); setIncomeFromStyle("Runway: you want to start a business. Add income once you have a feel for it"); }
+        }
         if (profileResult.error) setMessage(`Could not load your profile. Details: ${profileResult.error.message}`);
         const profile = profileResult.data;
         if (profile) {
@@ -125,7 +150,7 @@ export default function PlanPage() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) { setSignedIn(false); throw new Error("Sign in to save your assumptions."); }
-      const { error } = await supabase.from("fire_plans").upsert({ user_id: session.user.id, retirement_age: inputs.retirementAge, ...(planColumns || inputs.retirementExpenses !== null ? { retirement_expenses: inputs.retirementExpenses } : {}), inflation_rate: inputs.inflation, expected_return: inputs.expectedReturn, withdrawal_rate: inputs.withdrawal, investment_income_treatment: investmentIncomeTreatment, monthly_investment_income: inputs.monthlyInvestmentIncome, updated_at: new Date().toISOString() });
+      const { error } = await supabase.from("fire_plans").upsert({ user_id: session.user.id, retirement_age: inputs.retirementAge, ...(planColumns || inputs.retirementExpenses !== null ? { retirement_expenses: inputs.retirementExpenses } : {}), ...(incomeColumns || incomeKind !== "none" ? { after_fire_income_kind: incomeKind, after_fire_income: incomeKind === "none" ? 0 : afterIncome, after_fire_income_years: afterIncomeYears } : {}), inflation_rate: inputs.inflation, expected_return: inputs.expectedReturn, withdrawal_rate: inputs.withdrawal, investment_income_treatment: investmentIncomeTreatment, monthly_investment_income: inputs.monthlyInvestmentIncome, updated_at: new Date().toISOString() });
       if (error) throw /retirement_expenses/.test(error.message) ? new Error("Run supabase/migrations/202611260028_retirement_expenses.sql in Supabase to save expenses after you stop working.") : error;
       setMessage("FIRE assumptions saved to your account.");
     } catch (error) { setMessage(error instanceof Error ? error.message : "Could not save your plan."); }
@@ -167,7 +192,11 @@ export default function PlanPage() {
       </form>
       {result.target > 0 && (() => {
         // Life after FIRE: withdrawals rise with inflation every year; does the money last to 100?
-        const sim = simulateDrawdown({ retireAge: inputs.retirementAge, corpus: result.target, firstYearExpenses: result.expenseAtRetirement * 12, inflationPercent: inputs.inflation, returnPercent: afterReturn, yearsFromToday: result.years });
+        const income = incomeKind === "none" ? 0 : afterIncome;
+        const simBase = { retireAge: inputs.retirementAge, firstYearExpenses: result.expenseAtRetirement * 12, inflationPercent: inputs.inflation, returnPercent: afterReturn, yearsFromToday: result.years, incomeToday: income, incomeYears: afterIncomeYears };
+        const sim = simulateDrawdown({ ...simBase, corpus: result.target });
+        const needNoIncome = corpusNeeded({ ...simBase, incomeToday: 0 });
+        const needWithIncome = income > 0 ? corpusNeeded(simBase) : needNoIncome;
         const safeRate = sim.runsOutAt !== null ? sustainableWithdrawalRate({ retireAge: inputs.retirementAge, inflationPercent: inputs.inflation, returnPercent: afterReturn }) : null;
         const pts = sim.years.map(y => ({ age: y.age + 1, value: y.endBalanceToday }));
         const startToday = result.target / Math.pow(1 + inputs.inflation / 100, result.years);
@@ -183,8 +212,19 @@ export default function PlanPage() {
           <p className="eyebrow">AFTER YOU’RE FREE</p>
           <h2>Does the money last, with prices rising every year?</h2>
           <p className="after-intro">Your FIRE number assumes you <b>raise your withdrawals with inflation every year</b> after you stop working, while the rest of your money keeps growing. Here’s how that plays out from age {inputs.retirementAge}, starting with your FIRE number of {money(result.target)}.</p>
+          <div className="after-income">
+            <span className="after-q">After you stop working, will you earn anything?</span>
+            <div className="qn-chips">{INCOME_KINDS.map(k => <button key={k.id} type="button" className={incomeKind === k.id ? "selected" : ""} onClick={() => { setIncomeKind(k.id); if (k.id !== "none" && !afterIncome) setAfterIncome(Math.round(inputs.monthlyExpenses * (k.id === "parttime" ? 0.3 : 0.2) / 1000) * 1000); }}>{k.emoji} {k.label}</button>)}</div>
+            {incomeFromStyle && <small className="after-style">Pre-filled from your FIRE style ({incomeFromStyle}). Change it any time.</small>}
+            {incomeKind !== "none" && <div className="after-income-fields">
+              <label>Per month, in today’s money<div className="tm-amount small"><i>{currency === "AED" ? "AED" : "₹"}</i><input type="number" inputMode="numeric" min={0} step="any" value={afterIncome || ""} placeholder="0" onChange={e => setAfterIncome(Math.max(0, Number(e.target.value)))} /></div></label>
+              <label className="range-field">For how many years<b>{afterIncomeYears} years (to age {inputs.retirementAge + afterIncomeYears})</b><input type="range" min={1} max={30} step={1} value={afterIncomeYears} onChange={e => setAfterIncomeYears(Number(e.target.value))} /></label>
+              <small>{incomeKind === "business" ? "New businesses often take 2–3 years to pay you. Count only income you’re fairly sure of." : incomeKind === "parttime" ? "Part-time, consulting, teaching or passion work. Many early retirees earn something in the first 10 years." : "Rent, a pension or other steady income. It rises with inflation here."}</small>
+            </div>}
+          </div>
           <label className="range-field after-return"><span className="range-label">Yearly return after you stop working<b>{afterReturn}%</b></span><input type="range" min={4} max={14} step={0.5} value={afterReturn} onChange={e => setAfterReturn(Number(e.target.value))} /><small>Usually a little lower than while you’re working, because more is kept in safer investments. Inflation stays {inputs.inflation}%.</small></label>
-          <div className="after-steps">{marks.map(m => <div key={m.age}><span>Age {m.age}</span><strong>{money(m.monthlyWithdrawal)}/month</strong><small>{m.age === inputs.retirementAge ? "first year" : `+${inputs.inflation}% a year`}</small></div>)}</div>
+          <div className="after-steps">{marks.map(m => <div key={m.age}><span>Age {m.age}</span><strong>{money(m.monthlyWithdrawal)}/month</strong><small>{m.monthlyIncome > 0 ? `from investments (spend ${money(m.monthlySpending)} − earn ${money(m.monthlyIncome)})` : m.age === inputs.retirementAge ? "first year" : `+${inputs.inflation}% a year`}</small></div>)}</div>
+          <div className="after-need"><div><span>Money that lasts to 100 with no income</span><strong>{money(needNoIncome)}</strong></div>{income > 0 && <div className="with"><span>With {money(income)}/month for {afterIncomeYears} years (Barista FIRE)</span><strong>{money(needWithIncome)}</strong><small>{money(needNoIncome - needWithIncome)} less to save</small></div>}<div><span>Your FIRE number ({inputs.withdrawal}% rule)</span><strong>{money(result.target)}</strong></div></div>
           <p className={`after-verdict ${sim.runsOutAt === null ? "ok" : "short"}`}>{sim.runsOutAt === null
             ? <>✅ <b>Lasts beyond age 100.</b> About {money(last.value)} left at 100, in today’s money.</>
             : <>⚠️ <b>Runs out around age {sim.runsOutAt}.</b> To last to 100 at a {afterReturn}% return, use a withdrawal rate of about <b>{safeRate}%</b> (FIRE number {money(result.expenseAtRetirement * 12 / ((safeRate || 1) / 100))}), plan to spend a little less, or keep some income for a few years.</>}</p>

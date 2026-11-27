@@ -5,7 +5,9 @@
  */
 export type DrawdownYear = {
   age: number;
-  monthlyWithdrawal: number; // in rupees of that year
+  monthlyWithdrawal: number; // in rupees of that year (spending minus any income that year)
+  monthlySpending: number; // in rupees of that year
+  monthlyIncome: number; // income after FIRE that year (rupees of that year)
   startBalance: number; // nominal
   endBalance: number; // nominal, after withdrawal and growth
   endBalanceToday: number; // end balance in today's money (retirement-year rupees deflated back to today)
@@ -21,6 +23,9 @@ export function simulateDrawdown(input: {
   returnPercent: number; // nominal yearly return after retirement
   yearsFromToday: number; // years between today and the retirement age (to show today's money)
   endAge?: number;
+  /** Income after you stop working, per month in today's money, for the first `incomeYears` years (rises with inflation). */
+  incomeToday?: number;
+  incomeYears?: number;
 }): DrawdownResult {
   const endAge = input.endAge ?? 100;
   const i = input.inflationPercent / 100, r = input.returnPercent / 100;
@@ -28,12 +33,15 @@ export function simulateDrawdown(input: {
   let balance = Math.max(0, input.corpus);
   let runsOutAt: number | null = null;
   for (let age = input.retireAge, n = 0; age < endAge; age += 1, n += 1) {
-    const withdrawal = input.firstYearExpenses * Math.pow(1 + i, n);
+    const spending = input.firstYearExpenses * Math.pow(1 + i, n);
+    const income = n < (input.incomeYears ?? 0) ? (input.incomeToday ?? 0) * 12 * Math.pow(1 + i, input.yearsFromToday + n) : 0;
+    const withdrawal = Math.max(0, spending - income);
     const start = balance;
     const afterWithdrawal = start - withdrawal; // withdraw at the start of the year, then the rest grows
+    if (withdrawal === 0 && start === 0) { years.push({ age, monthlyWithdrawal: 0, monthlySpending: spending / 12, monthlyIncome: income / 12, startBalance: 0, endBalance: 0, endBalanceToday: 0 }); continue; }
     balance = afterWithdrawal > 0 ? afterWithdrawal * (1 + r) : 0;
     if (afterWithdrawal <= 0 && runsOutAt === null) runsOutAt = age;
-    years.push({ age, monthlyWithdrawal: withdrawal / 12, startBalance: start, endBalance: balance, endBalanceToday: balance / Math.pow(1 + i, input.yearsFromToday + n + 1) });
+    years.push({ age, monthlyWithdrawal: withdrawal / 12, monthlySpending: spending / 12, monthlyIncome: income / 12, startBalance: start, endBalance: balance, endBalanceToday: balance / Math.pow(1 + i, input.yearsFromToday + n + 1) });
     if (runsOutAt !== null) break;
   }
   return { years, runsOutAt, endAge };
@@ -48,4 +56,14 @@ export function sustainableWithdrawalRate(input: { retireAge: number; inflationP
     if (sim.runsOutAt === null) low = mid; else high = mid;
   }
   return Math.floor(low * 20) / 20; // round down to 0.05%
+}
+
+/** The smallest amount at the retirement age that lasts to `endAge` with the given spending and income (binary search). */
+export function corpusNeeded(input: Omit<Parameters<typeof simulateDrawdown>[0], "corpus">): number {
+  let low = 0, high = input.firstYearExpenses * 200;
+  for (let k = 0; k < 50; k += 1) {
+    const mid = (low + high) / 2;
+    if (simulateDrawdown({ ...input, corpus: mid }).runsOutAt === null) high = mid; else low = mid;
+  }
+  return Math.ceil(high / 10000) * 10000;
 }

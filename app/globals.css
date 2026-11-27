@@ -743,3 +743,16 @@ button.tm-limit{border:0;padding:0;cursor:pointer;text-align:left;width:100%;fon
 .after-buckets strong{display:block;color:var(--navy);font-size:14px}.after-buckets p{font-size:12px;color:#556575;line-height:1.55;margin:4px 0 0}
 .after-rules{font-size:13px;color:#41515f;line-height:1.7;padding-left:18px;margin:12px 0}
 @media(max-width:760px){.after-buckets{grid-template-columns:1fr}}
+.after-income{border:1px solid var(--line);border-radius:14px;padding:12px;margin:0 0 14px;background:#fbfcfd}
+.after-q{display:block;font-weight:700;color:var(--navy);font-size:14px;margin-bottom:8px}
+.after-income .qn-chips button{font-size:12px;padding:7px 11px}
+.after-style{display:block;margin-top:6px;font-size:12px;color:#2d6b55}
+.after-income-fields{display:grid;grid-template-columns:220px 1fr;gap:14px;align-items:end;margin-top:10px}
+.after-income-fields label{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--navy);font-weight:600}
+.after-income-fields .range-field b{font-weight:700;margin-left:6px}
+.after-income-fields>small{grid-column:1/-1;font-size:12px;color:#8896a3}
+.after-need{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:0 0 12px}
+.after-need>div{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.after-need span{font-size:12px;color:#647487}.after-need strong{font-family:Manrope,sans-serif;color:var(--navy);font-size:18px}
+.after-need .with{border-color:#9fd9c2;background:var(--pale)}.after-need .with small{font-size:12px;color:#1e6b52;font-weight:700}
+@media(max-width:640px){.after-income-fields{grid-template-columns:1fr}}
