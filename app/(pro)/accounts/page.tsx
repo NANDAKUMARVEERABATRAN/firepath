@@ -70,6 +70,7 @@ export default function AccountsPage() {
   const [picked, setPicked] = useState(false);
   const [matches, setMatches] = useState<Account[]>([]); // items of the type being added: offer to update them instead
   const [lastValue, setLastValue] = useState<{ value: number; at: string | null } | null>(null);
+  const [lastPreset, setLastPreset] = useState<Preset | null>(null);
   const [goals, setGoals] = useState<{ id: string; name: string; emoji: string; done: boolean }[]>([]);
   const { country, code } = useCountry();
   const goalName = (id?: string | null) => { const goal = goals.find(item => item.id === id); return goal ? `${goal.emoji} ${goal.name}` : null; };
@@ -218,9 +219,18 @@ export default function AccountsPage() {
     setPicked(true);
     setMessage("");
     setLastValue(null);
-    setMatches(sameTypeItems(accounts, { kind: preset.kind, category: preset.category, investment_type: preset.investment_type ?? null, property_use: preset.category === "property" ? preset.property_use ?? "self_occupied" : null }));
+    setLastPreset(preset);
+    // Already have this type? Update it by default (people usually track the total value, e.g. all mutual funds).
+    const same = sameTypeItems(accounts, { kind: preset.kind, category: preset.category, investment_type: preset.investment_type ?? null, property_use: preset.category === "property" ? preset.property_use ?? "self_occupied" : null });
+    if (same.length) { updateExisting(same[0]); setMatches(same); } else setMatches([]);
   }
-  function resetForm() { setValues(blank); setEditingId(null); setPicked(false); setMatches([]); setLastValue(null); }
+  /** Opt out of the default update: add a separate holding of this type with its own name. */
+  function addSeparate() {
+    if (!lastPreset) return;
+    setEditingId(null); setLastValue(null); setMatches([]);
+    setValues({ ...blank, kind: lastPreset.kind, category: lastPreset.category, name: "", investment_type: lastPreset.investment_type ?? "", property_use: lastPreset.property_use ?? "self_occupied", fire_treatment: lastPreset.fire, available_from_age: lastPreset.age ?? "", is_high_interest: Boolean(lastPreset.highInterest) });
+  }
+  function resetForm() { setValues(blank); setEditingId(null); setPicked(false); setMatches([]); setLastValue(null); setLastPreset(null); }
   const dupes = duplicateGroups(accounts);
   const activePreset = picked ? findPreset(values) : undefined;
 
@@ -265,12 +275,13 @@ export default function AccountsPage() {
         </> : <>
           <div className="add-picked"><span className="add-picked-emoji">{activePreset?.emoji ?? "📝"}</span><div><p className="eyebrow">{editingId ? "EDITING" : "ADDING"}</p><h2>{activePreset?.label ?? (values.kind === "asset" ? "Asset" : "Loan")}</h2></div><button type="button" className="text-link" onClick={resetForm}>{editingId ? "Cancel" : "Change"}</button></div>
           <span className={`fire-badge ${values.kind === "liability" ? "loan" : values.goal_id && values.fire_treatment === "available" ? "goal" : values.fire_treatment}`}>{values.kind === "liability" ? "🧾 Reduces your net worth" : values.fire_treatment === "available" && values.goal_id ? `🎯 Set aside for ${goalName(values.goal_id) ?? "a goal"}` : values.fire_treatment === "available" ? "✅ Counts toward your FIRE number" : values.fire_treatment === "later" ? "🔒 Retirement money — counts from the age you can access it" : "🏠 Adds to net worth, not to FIRE"}</span>
-          {!editingId && matches.length > 0 && <div className="update-existing">
-            <strong>🔄 Value changed? Update what you already have</strong>
-            <p>Adding it again would count it twice. Tap the one to update:</p>
-            <div className="update-existing-list">{matches.map(m => <button key={m.id} type="button" className="qn-choice" onClick={() => updateExisting(m)}>{m.name} · {money(m.current_value)}</button>)}</div>
-            <small>Or fill in below to add a <b>different</b> holding (e.g. another fund), with its own name.</small>
+          {editingId && matches.length > 0 && <div className="update-existing">
+            <strong>🔄 Updating “{values.name}”</strong>
+            <p>Enter today’s total value. It replaces the old one, so nothing is counted twice.</p>
+            {matches.length > 1 && <div className="update-existing-list">{matches.map(m => <button key={m.id} type="button" className={`qn-choice${m.id === editingId ? " selected" : ""}`} onClick={() => { updateExisting(m); setMatches(matches); }}>{m.name} · {money(m.current_value)}</button>)}</div>}
+            <small>Holding this separately (e.g. another fund you track on its own)? <button type="button" className="text-link" onClick={addSeparate}>Add a separate one instead</button></small>
           </div>}
+          {!editingId && lastPreset && matches.length === 0 && accounts.some(a => sameTypeItems([a], { kind: lastPreset.kind, category: lastPreset.category, investment_type: lastPreset.investment_type ?? null, property_use: lastPreset.category === "property" ? lastPreset.property_use ?? "self_occupied" : null }).length) && <p className="update-existing-note">Give this one its own name (e.g. the fund’s name) so it’s kept apart from your other {lastPreset.label.toLowerCase()}.</p>}
           <div className="account-form-grid">
             <label className="profile-field"><span>Name it (so you recognise it)</span><input value={values.name} onChange={event => setValues(current => ({ ...current, name: event.target.value }))} required maxLength={80} /></label>
             <label className="profile-field"><span>{values.kind === "asset" ? "What’s it worth today?" : "How much is still owed?"} ({country.symbol})</span><input type="number" inputMode="numeric" min="0" step="any" value={values.current_value} autoFocus onChange={event => setValues(current => ({ ...current, current_value: event.target.value }))} required />{lastValue && <small className="qn-words">Last saved: {money(lastValue.value)}{lastValue.at ? ` on ${new Date(lastValue.at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}` : ""}. Enter today’s value; it replaces the old one.</small>}{Number(values.current_value) > 0 && <small className="qn-words">= {amountInWords(Number(values.current_value), country.code)} {country.code === "IN" ? "rupees" : "dirhams"}</small>}</label>
