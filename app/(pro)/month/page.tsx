@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase/client";
 import { countryFromCurrency, formatCountryMoney, getCountry, type CountryCode } from "@/lib/country";
 import { getInvestmentStreak } from "@/lib/fireScore";
 import { parseBudgetCsv, transactionFingerprint, type ParsedBudgetRow } from "@/lib/budgetCsv";
+import { spendingCheckup } from "@/lib/spendingCheckup";
 import { categorySums, MONTH_CATEGORIES, MONTH_TOTAL_NOTE, monthSummary, planCategoryWrites, spendingTotal, type Entry, type MonthCategory } from "@/lib/monthLog";
 
 type Form = { takeHome: string; salaryPf: string; salaryPension: string; investmentIncome: string; spentTotal: string; invested: string; emis: string; note: string };
@@ -37,6 +38,9 @@ export default function ThisMonthPage() {
   const [editLimits, setEditLimits] = useState(false);
   const [limitsFrom, setLimitsFrom] = useState<string | null>(null);
   const [prevSums, setPrevSums] = useState<ReturnType<typeof categorySums> | null>(null); // last month, for ▲/▼
+  const [prevMonths, setPrevMonths] = useState<Record<string, number>[]>([]); // up to 3 earlier months, most recent first
+  const [valued, setValued] = useState<string[]>([]);
+  const [valuedColumn, setValuedColumn] = useState(false);
   const [trackColumn, setTrackColumn] = useState(false); // migration 0029 applied?
   const [usualSpent, setUsualSpent] = useState(0); // average of up to 3 earlier months (or the profile), to spot half-logged months // month the shown limits were set in
   const [logged, setLogged] = useState(false);
@@ -77,10 +81,15 @@ export default function ThisMonthPage() {
         supabase.from("financial_accounts").select("monthly_payment").eq("user_id", uid).eq("kind", "liability"),
         supabase.from("budget_transactions").select("id, spent_on, category, amount, note").eq("user_id", uid).eq("month_start", m).order("spent_on", { ascending: false }),
         supabase.from("monthly_budgets").select("month_start, category, target_amount").eq("user_id", uid).lte("month_start", m).order("month_start", { ascending: false }).limit(40),
-        supabase.from("budget_transactions").select("id, spent_on, category, amount, note").eq("user_id", uid).eq("month_start", monthOf(-1, m)),
+        supabase.from("budget_transactions").select("id, spent_on, category, amount, note, month_start").eq("user_id", uid).gte("month_start", monthOf(-3, m)).lt("month_start", m),
       ]);
-      const prevList = ((prevEntries.data ?? []) as Entry[]).map(e => ({ ...e, amount: Number(e.amount), note: e.note ?? "" }));
+      const earlierEntries = ((prevEntries.data ?? []) as (Entry & { month_start: string })[]).map(e => ({ ...e, amount: Number(e.amount), note: e.note ?? "" }));
+      const byMonth = [1, 2, 3].map(k => earlierEntries.filter(e => e.month_start === monthOf(-k, m))).filter(list => list.length);
+      const prevList = earlierEntries.filter(e => e.month_start === monthOf(-1, m));
       setPrevSums(prevList.length ? categorySums(prevList) : null);
+      setPrevMonths(byMonth.map(list => { const s = categorySums(list); return Object.fromEntries(MONTH_CATEGORIES.map(c => [c.id, s[c.id].total])); }));
+      setValued(Array.isArray(profile.data?.valued_categories) ? profile.data.valued_categories : []);
+      setValuedColumn(Boolean(profile.data && "valued_categories" in profile.data));
       const rows = checkins.data ?? [];
       setHistory(rows.map(r => ({ month_start: r.month_start, invested: Number(r.invested) })));
       setCode(countryFromCurrency(profile.data?.currency));
@@ -189,6 +198,24 @@ export default function ThisMonthPage() {
     setLimitsFrom(month); setEditLimits(false); setLimitDraft({});
   }
   const draftAll = (fn: (c: MonthCategory) => number) => setLimitDraft(Object.fromEntries(MONTH_CATEGORIES.map(c => [c.id, String(Math.max(0, Math.round(fn(c.id) / 100) * 100))])));
+
+  /** One-tap limit from the check-up (keeps the other limits as they are). */
+  async function setOneLimit(category: MonthCategory, amount: number) {
+    const supabase = createClient();
+    if (!supabase || !userId) return;
+    const next = { ...limits, [category]: amount };
+    const { error } = await supabase.from("monthly_budgets").upsert(MONTH_CATEGORIES.map(c => ({ user_id: userId, month_start: month, category: c.id, target_amount: next[c.id] ?? 0, updated_at: new Date().toISOString() })), { onConflict: "user_id,month_start,category" });
+    if (error) { setMessage(error.message); return; }
+    setLimits(next); setLimitsFrom(month);
+  }
+
+  /** "I value this": never flag this category in the check-up (saved to the profile when possible). */
+  async function toggleValued(category: string) {
+    const next = valued.includes(category) ? valued.filter(v => v !== category) : [...valued, category];
+    setValued(next);
+    const supabase = createClient();
+    if (supabase && userId && valuedColumn) await supabase.from("financial_profiles").update({ valued_categories: next }).eq("user_id", userId);
+  }
 
   /** Remember whether this person tracks a category budget (also shows/hides budget charts on Trends). */
   async function chooseMode(next: "total" | "category") {
@@ -326,6 +353,29 @@ export default function ThisMonthPage() {
           <Amount label="Loan EMIs & card payments" hint="Home, car, personal, gold loans, credit card" value={form.emis} onChange={set("emis")} symbol={country.symbol} />
         </div>
       </section>
+
+      {mode === "category" && categoryTotal > 0 && (() => {
+        // Spending check-up: the 2–3 best places to save, from this person's own numbers.
+        const items = spendingCheckup({ thisMonth: Object.fromEntries(MONTH_CATEGORIES.map(c => [c.id, shown(c.id)])), previous: prevMonths, limits, earned: summary.earned, valued });
+        const label = (id: string) => MONTH_CATEGORIES.find(c => c.id === id);
+        return <section className="tm-card tm-checkup">
+          <div className="tm-card-head"><h2>🔍 Spending check-up</h2><Link href="/save-more" className="text-link tm-inline">More ideas →</Link></div>
+          {items.length === 0 ? <p className="tm-ok">✅ No obvious leaks this month. Your spending is in line with your usual months and limits. Nice!</p> : <ul className="tm-findings">{items.map(i => {
+            const c = label(i.category)!;
+            const what = i.kind === "over_limit" ? <>{money(i.spent)} is <b>{money(i.spent - i.reference)} over</b> your {money(i.reference)} limit.</>
+              : i.kind === "rising" ? <>Up to {money(i.spent)} from your usual <b>{money(i.reference)}</b>.</>
+                : <>{Math.round((i.spent / summary.earned) * 100)}% of what you earned. A typical share is under {Math.round((i.reference / summary.earned) * 100)}%.</>;
+            const target = Math.max(0, Math.round(i.reference / 100) * 100);
+            return <li key={i.category}>
+              <span className="tm-find-emoji">{c.emoji}</span>
+              <div><strong>{c.label}</strong><p>{what} {i.kind === "over_limit" ? "Getting back to your limit" : i.kind === "rising" ? "Going back to your usual" : `Trimming to ${money(target)}`} saves <b>{money(i.yearlySaving)} a year</b>.</p>
+                <div className="tm-find-actions">{i.kind !== "over_limit" && <button type="button" onClick={() => void setOneLimit(i.category as MonthCategory, target)}>Set a {money(target)} limit</button>}<button type="button" onClick={() => void toggleValued(i.category)}>💚 I value this, don’t flag it</button></div>
+              </div>
+            </li>;
+          })}</ul>}
+          <p className="tm-hint">Essentials (rent, groceries, bills, health, insurance, education, family) are only flagged when they go over <b>your own</b> limit. Everything else is compared with your usual months and a typical share of income.{valued.length ? <> You value: {valued.map(v => <button key={v} type="button" className="tm-valued" onClick={() => void toggleValued(v)} aria-label={`Stop treating ${label(v)?.label ?? v} as valued`}>{label(v)?.label ?? v} ×</button>)}</> : null}</p>
+        </section>;
+      })()}
 
       {mode === "category" && categoryTotal > 0 && (() => {
         // Where the month's money went: one bar per category (spending colour), limit as a tick, change vs last month.

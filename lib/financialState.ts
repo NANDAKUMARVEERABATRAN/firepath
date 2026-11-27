@@ -4,7 +4,7 @@ import { applyLinkedSavings, type Goal } from "./goals.ts";
 import { normalizeSnapshots, type Snapshot } from "./progress.ts";
 import { countryFromCurrency, formatCountryMoney, getCountry, readStoredCountry, storeCountry } from "./country.ts";
 
-export type AccountRow = { id: string; name: string; kind: "asset" | "liability"; category: string; investment_type: string | null; current_value: number; monthly_payment: number; is_high_interest: boolean; fire_treatment: string; property_use?: "self_occupied" | "rented" | "investment" | null; goal_id?: string | null };
+export type AccountRow = { id: string; name: string; kind: "asset" | "liability"; category: string; investment_type: string | null; current_value: number; monthly_payment: number; is_high_interest: boolean; fire_treatment: string; property_use?: "self_occupied" | "rented" | "investment" | null; goal_id?: string | null; updated_at?: string | null };
 export type CheckinRow = { month_start: string; income: number; investment_income: number; expenses: number; invested: number; debt_paid: number; salary_savings: number };
 export type PlanRow = { retirement_age: number; inflation_rate: number; expected_return: number; withdrawal_rate: number; retirement_expenses?: number | null; step_up_percent?: number; step_up_month?: number | null; step_up_done_year?: number | null };
 export type LessonRow = { lesson_id: string; answered_correctly: boolean; completed_at: string };
@@ -56,7 +56,7 @@ export async function loadFinancialState(supabase: SupabaseClient, userId: strin
   if (goalsResult.error || lessonResult.error) warnings.push("Goals and lessons need the latest database migration (202611250013_goals_and_lessons.sql). Run it in the Supabase SQL editor to save them.");
 
   // select("*") keeps the Journey working whether or not the property_use migration has been applied yet.
-  const accounts: AccountRow[] = (accountsResult.data ?? []).map(row => ({ id: row.id, name: row.name, kind: row.kind, category: row.category, investment_type: row.investment_type ?? null, current_value: Number(row.current_value), monthly_payment: Number(row.monthly_payment), is_high_interest: Boolean(row.is_high_interest), fire_treatment: row.fire_treatment, property_use: row.property_use ?? null, goal_id: row.goal_id ?? null }));
+  const accounts: AccountRow[] = (accountsResult.data ?? []).map(row => ({ id: row.id, name: row.name, kind: row.kind, category: row.category, investment_type: row.investment_type ?? null, current_value: Number(row.current_value), monthly_payment: Number(row.monthly_payment), is_high_interest: Boolean(row.is_high_interest), fire_treatment: row.fire_treatment, property_use: row.property_use ?? null, goal_id: row.goal_id ?? null, updated_at: row.updated_at ?? null }));
   const checkins: CheckinRow[] = (checkinResult.data ?? []).map(row => ({ month_start: row.month_start, income: Number(row.income), investment_income: Number(row.investment_income ?? 0), expenses: Number(row.expenses), invested: Number(row.invested), debt_paid: Number(row.debt_paid), salary_savings: Number(row.salary_pf ?? 0) + Number(row.salary_pension ?? 0) }));
   // The saved profile currency decides the country (₹ India / AED UAE) across the whole app.
   const country = getCountry(countryFromCurrency(profileResult.data?.currency));

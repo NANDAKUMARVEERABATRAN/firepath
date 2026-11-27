@@ -23,6 +23,7 @@ import { analyzeGoal, goalCategories, statusLabel } from "@/lib/goals";
 import { getLessonOfDay, lessons as allLessons } from "@/lib/wisdom";
 import { fireStyles, getWhyResult, styleTip } from "@/lib/fireWhy";
 import { inFutureMoney } from "@/lib/inflation";
+import { daysSince } from "@/lib/spendingCheckup";
 import { cutNeededForRate, getNextTier, getSavingsTier, savingsRate } from "@/lib/savingsCoach";
 
 const greeting = () => { const hour = new Date().getHours(); return hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening"; };
@@ -225,6 +226,13 @@ export default function JourneyPage() {
 
       {new Date().getDate() <= 7 && state && state.snapshots.length > 0 && <a href="/report" className="report-alert"><span>📬</span><div><strong>Your monthly FIRE report is ready</strong><small>See what changed, how your habits did, and 3 things to focus on next.</small></div><ArrowRight size={18} /></a>}
       {stepUpDue && state && <div className="stepup-alert"><span>📈</span><div><strong>It’s step-up month!</strong><small>Raise your monthly investment from {money(game.profile.monthly_investment)} to {money(stepUpTarget)} (+{state.plan.step_up_percent}%). Then tap Done.</small></div><button type="button" className="button button-primary" onClick={() => void confirmStepUp()}>Done ✓</button></div>}
+      {(() => {
+        // Quarterly nudge: EPF/NPS/PPF grow every month, so ask for the real passbook balance every 3 months.
+        const stale = (state?.accounts ?? []).filter(a => a.kind === "asset" && a.fire_treatment === "later" && (daysSince(a.updated_at) ?? 0) > 90);
+        if (!stale.length) return null;
+        const months = Math.floor(Math.max(...stale.map(a => daysSince(a.updated_at) ?? 0)) / 30);
+        return <a href="/accounts" className="saver-strip tone-warn later-reminder"><span className="saver-strip-emoji">🏛️</span><div><small>QUARTERLY CHECK</small><strong>Update {stale.map(a => a.name).slice(0, 3).join(", ")}{stale.length > 3 ? "…" : ""}</strong><span>Last updated {months} months ago. Salary contributions and interest add up, so check your EPF passbook / NPS statement and enter the new balance.</span></div><ArrowRight size={18} /></a>;
+      })()}
       {streakAtRisk && <a href="/month" className="streak-alert"><Flame size={20} /><div><strong>Your {game.streak}-month streak is at risk!</strong><span>Log {monthName} to keep it alive — it takes 30 seconds. +60 XP</span></div><ArrowRight size={18} /></a>}
 
       {!streakAtRisk && <section className="motivation-banner">

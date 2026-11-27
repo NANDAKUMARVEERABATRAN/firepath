@@ -712,3 +712,14 @@ button.tm-limit{border:0;padding:0;cursor:pointer;text-align:left;width:100%;fon
 @media(max-width:640px){.tm-bars li{grid-template-columns:1fr 90px}.tm-bar-track{grid-column:1/-1;grid-row:2}.tm-bars small{grid-column:1/-1}}
 .tr-budget-off h2{font-family:Manrope,sans-serif;color:var(--navy);font-size:18px;margin:0 0 6px}
 .tr-budget-off p{font-size:13px;color:var(--muted);line-height:1.6;margin:0 0 8px}
+.tm-checkup{border-color:#ffe3a3;background:linear-gradient(135deg,#fffaf0,#fff)}
+.tm-ok{margin:10px 0 0;font-size:14px;color:#2d6b55}
+.tm-findings{list-style:none;padding:0;margin:12px 0 4px;display:flex;flex-direction:column;gap:10px}
+.tm-findings li{display:flex;gap:12px;align-items:flex-start;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px}
+.tm-find-emoji{font-size:24px}
+.tm-findings strong{font-family:Manrope,sans-serif;color:var(--navy);font-size:15px}
+.tm-findings p{margin:3px 0 8px;font-size:13px;color:#41515f;line-height:1.55}
+.tm-find-actions{display:flex;flex-wrap:wrap;gap:6px}
+.tm-find-actions button,.tm-valued{border:1px solid #cfe3da;background:#fff;border-radius:16px;padding:5px 11px;font:inherit;font-size:12px;font-weight:600;color:#2d6b55;cursor:pointer}
+.tm-valued{margin-left:6px;padding:2px 8px;font-size:11px}
+.later-reminder{margin:0 0 14px}
