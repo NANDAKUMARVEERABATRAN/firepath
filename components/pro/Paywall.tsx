@@ -114,9 +114,9 @@ export default function Paywall({ status, onStarted, signedIn, feature }: Props)
           {canTrial && <p className="paywall-small"><ShieldCheck size={14} /> No card · no auto-charge · takes 5 seconds</p>}
           {showFounding && <div className="founding-card">
             <p className="founding-tag">🏅 FOUNDING MEMBER OFFER · UNTIL {new Date(`${FOUNDING.until}T12:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }).toUpperCase()}</p>
-            <strong>{priceText(FOUNDING.yearly, code)}<small>/year, locked for life</small></strong>
-            <span>That’s {priceText(Math.round(FOUNDING.yearly / 12), code)}/month, {Math.round((1 - FOUNDING.yearly / price.yearly) * 100)}% off the normal yearly price, for as long as you stay.{spotsLeft !== null ? ` ${spotsLeft.toLocaleString("en-IN")} of ${FOUNDING.spots.toLocaleString("en-IN")} spots left.` : ` Only the first ${FOUNDING.spots.toLocaleString("en-IN")} members.`}</span>
-            {mySpot ? <p className="founding-mine">✅ You’re founding member <b>#{mySpot}</b>. When payments open, your price is {priceText(FOUNDING.yearly, code)}/year, for life. No payment now.</p>
+            <strong>{priceText(FOUNDING.yearly, code)}<small>/year for your first {FOUNDING.years} years</small></strong>
+            <span>That’s {priceText(Math.round(FOUNDING.yearly / 12), code)}/month, {Math.round((1 - FOUNDING.yearly / price.yearly) * 100)}% off the normal yearly price, locked for {FOUNDING.years} years.{spotsLeft !== null ? ` ${spotsLeft.toLocaleString("en-IN")} of ${FOUNDING.spots.toLocaleString("en-IN")} spots left.` : ` Only the first ${FOUNDING.spots.toLocaleString("en-IN")} members.`}</span>
+            {mySpot ? <p className="founding-mine">✅ You’re founding member <b>#{mySpot}</b>. When payments open, your price is {priceText(FOUNDING.yearly, code)}/year for your first {FOUNDING.years} years. No payment now.</p>
               : <button type="button" className="button founding-cta" onClick={() => void reserve()} disabled={busy || spotsLeft === 0}>{spotsLeft === 0 ? "All founding spots are taken" : signedIn ? "Reserve my founding spot (no payment now)" : "Sign in & reserve my spot"}</button>}
           </div>}
           <div className="plan-options" role="radiogroup" aria-label="Choose a plan">

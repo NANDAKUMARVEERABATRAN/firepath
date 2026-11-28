@@ -33,8 +33,8 @@ export const hasPro = (status: ProStatus) => status.state === "trial" || status.
 export const CALCULATOR_KEY = "ff-calculator";
 export type CalculatorSnapshot = { age: number; retireAge: number; expenses: number; assets: number; monthlyInvestment: number };
 
-/** Founding members: the first 1,000 people get this yearly price, locked for life (India). */
-export const FOUNDING = { yearly: 599, spots: 1000, until: "2027-01-31" } as const;
+/** Founding members: the first 1,000 people get this yearly price for their first 3 years (India), then the normal yearly price. */
+export const FOUNDING = { yearly: 599, spots: 1000, until: "2027-01-31", years: 3 } as const;
 export const foundingOpen = (now = new Date()) => now.toISOString().slice(0, 10) <= FOUNDING.until;
 
 /** Referral links: ?ref=CODE is remembered until sign-in, then claimed once. Friends get a 30-day trial. */
